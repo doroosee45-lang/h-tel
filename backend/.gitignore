@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+
+# Build folders
+dist/
+build/
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Uploads temporaires
+uploads/
+temp/
+tmp/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# MongoDB
+data/
+dump/
+
+# PM2
+.pm2/
+
+# Docker
+docker-data/
+
+# SSL Certificates
+*.pem
+*.key
+*.crt
+
+# Test reports
+reports/
+
+# Misc
+*.tgz
+*.bak

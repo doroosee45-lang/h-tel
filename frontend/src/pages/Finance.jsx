@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import { Grid, Card, Box, Typography, Stack, Chip, Button, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import LockOpenRoundedIcon from '@mui/icons-material/LockOpenRounded';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { financeJournal, financeTrend, financeIndicateurs, caisse, kpis, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 export default function Finance() {
+  const [searchQuery, setSearchQuery] = useState('');
   const solde = kpis.recettesJour - kpis.depensesJour;
+  const journalRows = filterRecords(financeJournal, searchQuery, ['libelle', 'type', 'montant', 'date']);
 
   return (
     <Grid container spacing={2.5}>
@@ -87,19 +92,25 @@ export default function Finance() {
 
       <Grid item xs={12}>
         <Card sx={{ overflow: 'hidden' }}>
-          <Box sx={{ p: 3, pb: 1.5 }}>
-            <Typography variant="h6">Journal de caisse — aujourd’hui</Typography>
-          </Box>
-          <Table>
-            <TableHead>
-              <TableRow sx={{ bgcolor: tokens.color.cream }}>
-                {['Date', 'Libellé', 'Type', 'Montant'].map((h) => (
-                  <TableCell key={h} sx={{ fontFamily: tokens.font.mono, fontSize: 11, color: 'text.secondary', textTransform: 'uppercase' }}>{h}</TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {financeJournal.map((f) => (
+            <Box sx={{ p: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
+              <Typography variant="h6">Journal de caisse — aujourd’hui</Typography>
+              <SearchField
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Rechercher un libellé, type, montant…"
+                sx={{ minWidth: { sm: 260 } }}
+              />
+            </Box>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: tokens.color.cream }}>
+                  {['Date', 'Libellé', 'Type', 'Montant'].map((h) => (
+                    <TableCell key={h} sx={{ fontFamily: tokens.font.mono, fontSize: 11, color: 'text.secondary', textTransform: 'uppercase' }}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {journalRows.map((f) => (
                 <TableRow key={f.id} hover>
                   <TableCell>{new Date(f.date).toLocaleDateString('fr-FR')}</TableCell>
                   <TableCell sx={{ fontWeight: 500 }}>{f.libelle}</TableCell>

@@ -4,9 +4,11 @@ import {
 } from '@mui/material';
 import RestaurantRoundedIcon from '@mui/icons-material/RestaurantRounded';
 import LocalBarRoundedIcon from '@mui/icons-material/LocalBarRounded';
+import SearchField from '../../components/common/SearchField.jsx';
 import { tokens } from '../../theme.js';
 import { AppContext } from '../../context/AppContext.jsx';
 import { clientOrdersData, currency } from '../../data/mockData.js';
+import { filterRecords } from '../../utils/searchUtils.js';
 
 const statutStyle = {
   'Livrée': { bg: tokens.color.successSoft, fg: tokens.color.success },
@@ -19,9 +21,11 @@ export default function ClientOrders() {
   const { cartItems, cartSubtotal, addToCart, clearCart } = useContext(AppContext);
   const [tab, setTab] = useState('Tous');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const cats = ['Tous', 'Restaurant', 'Bar'];
-  const orders = clientOrdersData.filter((o) => tab === 'Tous' || o.type === tab);
+  const baseOrders = clientOrdersData.filter((o) => tab === 'Tous' || o.type === tab);
+  const orders = filterRecords(baseOrders, searchQuery, ['id', 'type', 'statut', 'methode', 'date', 'total', 'items']);
 
   const handleOrderFromCart = () => {
     if (cartItems.length === 0) return;
@@ -32,16 +36,24 @@ export default function ClientOrders() {
   return (
     <Box>
       <Card sx={{ p: 3, mb: 2.5, bgcolor: tokens.color.navy, color: '#fff' }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <RestaurantRoundedIcon />
-          </Box>
-          <Box>
-            <Typography variant="h5">Mes Commandes</Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-              Restaurant & Bar — suivez vos repas, quantités, prix et statut.
-            </Typography>
-          </Box>
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ flexWrap: 'wrap', gap: 1.5 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <RestaurantRoundedIcon />
+            </Box>
+            <Box>
+              <Typography variant="h5">Mes Commandes</Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                Restaurant & Bar — suivez vos repas, quantités, prix et statut.
+              </Typography>
+            </Box>
+          </Stack>
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Rechercher une commande, un plat, un statut…"
+            sx={{ minWidth: { sm: 240 } }}
+          />
         </Stack>
       </Card>
 

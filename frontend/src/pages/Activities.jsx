@@ -2,14 +2,19 @@ import { useState } from 'react';
 import { Grid, Card, Box, Typography, Stack, Chip, Button, Dialog, DialogContent, DialogTitle, TextField } from '@mui/material';
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
 import QRFrame from '../components/common/QRFrame.jsx';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { activities, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 export default function Activities() {
   const [openBooking, setOpenBooking] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [bookingForm, setBookingForm] = useState({ client: '', date: '2026-08-01', personnes: 2 });
   const [bookings, setBookings] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredActivities = filterRecords(activities, searchQuery, ['nom', 'horaire', 'prix', 'description', 'id']);
+  const filteredBookings = filterRecords(bookings, searchQuery, ['id', 'activity', 'client', 'date', 'personnes', 'prix']);
 
   const openReservationDialog = (activity) => {
     setSelectedActivity(activity);
@@ -34,7 +39,15 @@ export default function Activities() {
 
   return (
     <Grid container spacing={2.5}>
-      {activities.map((a) => (
+      <Grid item xs={12}>
+        <SearchField
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher une activité, un horaire, un prix…"
+          sx={{ maxWidth: 420 }}
+        />
+      </Grid>
+      {filteredActivities.map((a) => (
         <Grid item xs={12} sm={6} key={a.id}>
           <Card sx={{ overflow: 'hidden', display: 'flex', flexDirection: { xs: 'column', sm: 'row' } }}>
             <QRFrame radius={0}>
@@ -103,7 +116,7 @@ export default function Activities() {
         <Card sx={{ mt: 3, p: 3 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>Réservations d’activités</Typography>
           <Stack spacing={1.5}>
-            {bookings.map((booking) => (
+            {filteredBookings.map((booking) => (
               <Box key={booking.id} sx={{ p: 2, borderRadius: '16px', bgcolor: tokens.color.cream }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Typography sx={{ fontWeight: 700 }}>{booking.activity}</Typography>

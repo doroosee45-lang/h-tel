@@ -5,9 +5,11 @@ import PrintRoundedIcon from '@mui/icons-material/PrintRounded';
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import QRFrame from '../components/common/QRFrame.jsx';
 import CartSummary from '../components/common/CartSummary.jsx';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { AppContext } from '../context/AppContext.jsx';
 import { menuCategories, menuItems, kitchenOrders, restaurantTables, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const statutStyle = {
   'Nouvelle': { bg: tokens.color.dangerSoft, fg: tokens.color.danger },
@@ -24,18 +26,31 @@ const tableStyle = {
 
 export default function Restaurant() {
   const [tab, setTab] = useState('Tous');
+  const [searchQuery, setSearchQuery] = useState('');
   const { addToCart, userRole } = useContext(AppContext);
   const isClient = userRole === 'Client';
   const cats = ['Tous', ...menuCategories];
-  const items = menuItems.filter((i) => tab === 'Tous' || i.categorie === tab);
+  const items = filterRecords(
+    menuItems.filter((i) => tab === 'Tous' || i.categorie === tab),
+    searchQuery,
+    ['nom', 'categorie', 'description', 'ingredients', 'allergenes', 'temps', 'prix', 'id']
+  );
 
   return (
     <Grid container spacing={2.5}>
       <Grid item xs={12} lg={8}>
         <Card sx={{ p: 3 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
             <Typography variant="h6">Menu digital</Typography>
-            <Chip label="QR Menu actif en salle & chambre" size="small" sx={{ bgcolor: tokens.color.goldSoft, color: tokens.color.navyDeep }} />
+            <Stack direction="row" spacing={1.2} alignItems="center">
+              <SearchField
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Rechercher un plat, une catégorie, un ingrédient…"
+                sx={{ minWidth: { sm: 240 } }}
+              />
+              <Chip label="QR Menu actif en salle & chambre" size="small" sx={{ bgcolor: tokens.color.goldSoft, color: tokens.color.navyDeep }} />
+            </Stack>
           </Stack>
           <Tabs
             value={tab}

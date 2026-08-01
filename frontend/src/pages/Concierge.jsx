@@ -6,8 +6,10 @@ import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded';
 import TourRoundedIcon from '@mui/icons-material/TourRounded';
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded';
 import RestaurantMenuRoundedIcon from '@mui/icons-material/RestaurantMenuRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { concierge } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const icons = {
   taxi: <LocalTaxiRoundedIcon />,
@@ -24,6 +26,8 @@ export default function Concierge() {
   const [selectedService, setSelectedService] = useState(null);
   const [requestNotes, setRequestNotes] = useState('');
   const [requestsSent, setRequestsSent] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const services = filterRecords(concierge, searchQuery, ['service', 'description']);
 
   const handleShowDetails = (service) => {
     setSelectedService(service);
@@ -47,8 +51,15 @@ export default function Concierge() {
   };
 
   return (
-    <Grid container spacing={2.5}>
-      {concierge.map((c) => (
+    <Box>
+      <SearchField
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Rechercher un service de conciergerie…"
+        sx={{ mb: 2.5, maxWidth: 420 }}
+      />
+      <Grid container spacing={2.5}>
+      {services.map((c) => (
         <Grid item xs={12} sm={6} md={4} key={c.id}>
           <Card sx={{ p: 2.6, height: '100%' }}>
             <Box
@@ -130,6 +141,7 @@ export default function Concierge() {
           </Stack>
         </Box>
       )}
-    </Grid>
+      </Grid>
+    </Box>
   );
 }

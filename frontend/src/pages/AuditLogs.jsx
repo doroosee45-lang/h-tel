@@ -1,20 +1,31 @@
+import { useState } from 'react';
 import { Box, Card, Typography, Stack, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { auditLogs } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 export default function AuditLogs() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const rows = filterRecords(auditLogs, searchQuery, ['action', 'user', 'module', 'status', 'timestamp']);
   return (
     <Box>
       <Card sx={{ p: 3, mb: 2.5 }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <HistoryRoundedIcon sx={{ fontSize: 32, color: tokens.color.navy }} />
-          <Box>
+          <Box sx={{ flex: 1 }}>
             <Typography variant="h5">Journal d’audit</Typography>
             <Typography variant="body2" color="text.secondary">
               Suivi détaillé des connexions, actions administratives et modifications de données.
             </Typography>
           </Box>
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Rechercher une action, utilisateur, module…"
+            sx={{ minWidth: { sm: 260 } }}
+          />
         </Stack>
       </Card>
 
@@ -30,7 +41,7 @@ export default function AuditLogs() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {auditLogs.map((log) => (
+            {rows.map((log) => (
               <TableRow key={log.id}>
                 <TableCell>{log.timestamp}</TableCell>
                 <TableCell>{log.user}</TableCell>

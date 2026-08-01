@@ -8,9 +8,11 @@ import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded';
 import AddCardRoundedIcon from '@mui/icons-material/AddCardRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import PendingActionsRoundedIcon from '@mui/icons-material/PendingActionsRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { AppContext } from '../context/AppContext.jsx';
 import { payments as initialPayments, repartitionPaiements, clientOrdersData, clientInvoicesData, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const PIE_COLORS = [tokens.color.navy, tokens.color.gold, tokens.color.info, tokens.color.success, tokens.color.warning, tokens.color.navySoft, tokens.color.danger, tokens.color.inkMuted];
 
@@ -24,6 +26,7 @@ export default function Payments() {
   const { userRole, payments, setPayments, selectedPaymentMethod, setSelectedPaymentMethod, paymentMethods, addAuditLog, addNotification } = useContext(AppContext);
   const [openPay, setOpenPay] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const isClient = userRole === 'Client';
 
@@ -37,7 +40,11 @@ export default function Payments() {
     ...clientInvoicesData.filter((i) => i.statut === 'En attente').map((i) => ({ id: `PAY-${i.id}`, reference: i.id, client: 'M. Kanyinda Tshibola', type: 'Facture', methode: i.methode, montant: i.total, statut: 'En attente', date: i.date }))
   ];
 
-  const rows = isClient ? clientPayments : payments;
+  const rows = filterRecords(
+    isClient ? clientPayments : payments,
+    searchQuery,
+    ['reference', 'client', 'type', 'methode', 'methodePaiement', 'statut', 'montant', 'id', 'date']
+  );
 
   const handleRecordPayment = () => {
     if (!selectedPaymentMethod) return;
@@ -154,9 +161,17 @@ export default function Payments() {
 
         <Grid item xs={12} lg={8}>
           <Card sx={{ overflow: 'hidden' }}>
-            <Box sx={{ p: 3, pb: 1.5 }}>
-              <Typography variant="h6">{isClient ? 'Mes paiements' : 'Toutes les transactions'}</Typography>
-              <Typography variant="caption" color="text.secondary">Reliés aux réservations, commandes restaurant/bar, activités et factures.</Typography>
+            <Box sx={{ p: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
+              <Box>
+                <Typography variant="h6">{isClient ? 'Mes paiements' : 'Toutes les transactions'}</Typography>
+                <Typography variant="caption" color="text.secondary">Reliés aux réservations, commandes restaurant/bar, activités et factures.</Typography>
+              </Box>
+              <SearchField
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Rechercher par référence, client, méthode, statut…"
+                sx={{ minWidth: { sm: 260 } }}
+              />
             </Box>
             <Table>
               <TableHead>

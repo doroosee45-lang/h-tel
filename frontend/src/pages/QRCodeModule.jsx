@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Grid, Card, Box, Typography, Stack, Chip, Button } from '@mui/material';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { qrCodes } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 // Petit générateur de motif pseudo-QR déterministe (démonstration visuelle uniquement)
 function QRPattern({ seed, size = 96 }) {
@@ -40,15 +43,26 @@ function QRPattern({ seed, size = 96 }) {
 }
 
 export default function QRCodeModule() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const rows = filterRecords(qrCodes, searchQuery, ['id', 'type', 'cible', 'statut', 'scans']);
+
   return (
     <Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-        Chaque chambre, menu, facture et activité possède un QR Code unique, scannable depuis l’application client
-        pour un accès instantané — sans contact.
-      </Typography>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5, flexWrap: 'wrap', gap: 1.5 }}>
+        <Typography variant="body2" color="text.secondary">
+          Chaque chambre, menu, facture et activité possède un QR Code unique, scannable depuis l’application client
+          pour un accès instantané — sans contact.
+        </Typography>
+        <SearchField
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher par type, cible, statut…"
+          sx={{ minWidth: { sm: 240 } }}
+        />
+      </Stack>
 
       <Grid container spacing={2.5}>
-        {qrCodes.map((qr) => (
+        {rows.map((qr) => (
           <Grid item xs={12} sm={6} md={4} key={qr.id}>
             <Card sx={{ p: 2.4 }}>
               <Stack direction="row" spacing={2} alignItems="center">

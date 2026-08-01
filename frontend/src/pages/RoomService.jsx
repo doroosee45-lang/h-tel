@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { Grid, Card, Box, Typography, Stack, Chip, Divider, Button } from '@mui/material';
 import RoomServiceRoundedIcon from '@mui/icons-material/RoomServiceRounded';
 import QRFrame from '../components/common/QRFrame.jsx';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { roomServiceOrders, roomServiceCatalog, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const statutStyle = {
   'Nouvelle': { bg: tokens.color.dangerSoft, fg: tokens.color.danger },
@@ -11,16 +14,28 @@ const statutStyle = {
 };
 
 export default function RoomService() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const orderRows = filterRecords(roomServiceOrders, searchQuery, ['id', 'chambre', 'client', 'items', 'statut', 'heure', 'montant']);
+  const catalogRows = filterRecords(roomServiceCatalog, searchQuery, ['id', 'nom', 'categorie', 'prix']);
+
   return (
     <Grid container spacing={2.5}>
       <Grid item xs={12} lg={7}>
         <Card sx={{ p: 3 }}>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-            <RoomServiceRoundedIcon sx={{ color: tokens.color.gold }} />
-            <Typography variant="h6">Commandes en cours</Typography>
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ mb: 2, flexWrap: 'wrap', gap: 1.5 }}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <RoomServiceRoundedIcon sx={{ color: tokens.color.gold }} />
+              <Typography variant="h6">Commandes en cours</Typography>
+            </Stack>
+            <SearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Rechercher commande, client, chambre…"
+              sx={{ minWidth: { sm: 240 } }}
+            />
           </Stack>
           <Stack spacing={1.6}>
-            {roomServiceOrders.map((o) => (
+            {orderRows.map((o) => (
               <Box key={o.id} sx={{ p: 1.8, borderRadius: '12px', border: `1px solid ${tokens.color.line}` }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Stack direction="row" spacing={1.2} alignItems="center">
@@ -50,7 +65,7 @@ export default function RoomService() {
           <Typography variant="h6" sx={{ mb: 0.4 }}>Catalogue Room Service</Typography>
           <Typography variant="caption" color="text.secondary">Accessible via QR Code depuis chaque chambre</Typography>
           <Stack spacing={1.6} sx={{ mt: 2 }}>
-            {roomServiceCatalog.map((item) => (
+            {catalogRows.map((item) => (
               <Stack key={item.id} direction="row" spacing={1.6} alignItems="center">
                 <QRFrame size={9} radius={10}>
                   <Box component="img" src={item.image} sx={{ width: 62, height: 62, objectFit: 'cover', display: 'block' }} />

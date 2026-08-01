@@ -1,15 +1,26 @@
+import { useState } from 'react';
 import { Grid, Card, Box, Typography, Stack, Chip, Table, TableHead, TableRow, TableCell, TableBody, LinearProgress } from '@mui/material';
 import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { hotels, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 export default function MultiHotels() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredHotels = filterRecords(hotels, searchQuery, ['nom', 'id', 'chambres', 'occupation', 'revenus', 'actif']);
   const totalRevenus = hotels.reduce((s, h) => s + h.revenus, 0);
 
   return (
     <Box>
+      <SearchField
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Rechercher un hôtel, une ville, un statut…"
+        sx={{ mb: 2, maxWidth: 420 }}
+      />
       <Grid container spacing={2.5} sx={{ mb: 0.5 }}>
-        {hotels.map((h) => (
+        {filteredHotels.map((h) => (
           <Grid item xs={12} sm={6} md={4} key={h.id}>
             <Card sx={{ p: 2.6 }}>
               <Stack direction="row" spacing={1.4} alignItems="center">
@@ -54,7 +65,7 @@ export default function MultiHotels() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {hotels.map((h) => (
+            {filteredHotels.map((h) => (
               <TableRow key={h.id} hover>
                 <TableCell sx={{ fontWeight: 500 }}>{h.nom}</TableCell>
                 <TableCell>{h.chambres}</TableCell>

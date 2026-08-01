@@ -9,10 +9,11 @@ import {
   Menu,
   MenuItem,
   Divider,
-  Button
+  Button,
+  Chip
 } from '@mui/material';
 
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
@@ -27,6 +28,7 @@ import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 
 import { tokens } from '../../theme.js';
 import { AppContext } from '../../context/AppContext.jsx';
+import GlobalSearch from '../common/GlobalSearch.jsx';
 
 const ROLE_AVATARS = {
   'Super Admin': 'https://i.pravatar.cc/100?img=11',
@@ -46,11 +48,24 @@ export default function Topbar({ title, subtitle, onToggleSidebar }) {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [roleEl, setRoleEl] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const openProfile = Boolean(anchorEl);
   const openRoles = Boolean(roleEl);
 
   const unreadCount = (notifications || []).filter((n) => n.statut !== 'Lue').length;
+
+  // Raccourci clavier Ctrl/Cmd+K pour ouvrir la recherche globale
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -102,24 +117,45 @@ export default function Topbar({ title, subtitle, onToggleSidebar }) {
 
       {/* DROITE */}
       <Stack direction="row" spacing={2} alignItems="center">
-        {/* Recherche */}
+        {/* Recherche globale — fonctionnelle */}
         <Stack
           direction="row"
           alignItems="center"
           spacing={1}
+          onClick={() => setSearchOpen(true)}
           sx={{
-            display: { xs: 'none', lg: 'flex' },
+            display: { xs: 'none', md: 'flex' },
             bgcolor: '#fff',
             border: `1px solid ${tokens.color.line}`,
             borderRadius: '10px',
             px: 1.5,
             py: 0.7,
-            width: 240
+            width: 240,
+            cursor: 'pointer',
+            transition: 'border-color .2s',
+            '&:hover': { borderColor: tokens.color.gold }
+          }}
+        >
+          <SearchRoundedIcon sx={{ color: tokens.color.gold }} />
+          <InputBase
+            placeholder="Rechercher… (Ctrl+K)"
+            readOnly
+            sx={{ fontSize: 13.5, width: '100%', cursor: 'pointer', '& input': { cursor: 'pointer' } }}
+          />
+          <Chip label="Ctrl K" size="small" sx={{ fontFamily: tokens.font.mono, fontSize: 10, height: 20, bgcolor: tokens.color.cream, color: 'text.secondary' }} />
+        </Stack>
+
+        {/* Bouton loupe — mobile */}
+        <IconButton
+          onClick={() => setSearchOpen(true)}
+          sx={{
+            display: { xs: 'inline-flex', md: 'none' },
+            bgcolor: '#fff',
+            border: `1px solid ${tokens.color.line}`
           }}
         >
           <SearchRoundedIcon />
-          <InputBase placeholder="Rechercher..." />
-        </Stack>
+        </IconButton>
 
         {/* Hôtel */}
         <Stack
@@ -226,6 +262,9 @@ export default function Topbar({ title, subtitle, onToggleSidebar }) {
           </MenuItem>
         </Menu>
       </Stack>
+
+      {/* Recherche globale */}
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </Stack>
   );
 }

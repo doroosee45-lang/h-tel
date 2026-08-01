@@ -4,8 +4,10 @@ import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded';
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded';
 import PublicRoundedIcon from '@mui/icons-material/PublicRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { clients, clientHistory, fideliteReductions, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const fideliteStyle = {
   Platine: { bg: '#EAEAEA', fg: '#4A4A4A' },
@@ -29,11 +31,25 @@ function HistorySection({ title, items }) {
 
 export default function CRM() {
   const [selected, setSelected] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const history = selected ? clientHistory[selected.id] : null;
+  const filteredClients = filterRecords(
+    clients,
+    searchQuery,
+    ['nom', 'nationalite', 'telephone', 'email', 'fidelite', 'id', 'sejours', 'pointsFidelite']
+  );
 
   return (
     <Grid container spacing={2.5}>
-      {clients.map((c) => (
+      <Grid item xs={12}>
+        <SearchField
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher un client par nom, téléphone, email, nationalité, fidélité…"
+          sx={{ maxWidth: 480 }}
+        />
+      </Grid>
+      {filteredClients.map((c) => (
         <Grid item xs={12} sm={6} lg={3} key={c.id}>
           <Card sx={{ p: 2.6, height: '100%' }}>
             <Stack direction="row" spacing={1.6} alignItems="center">

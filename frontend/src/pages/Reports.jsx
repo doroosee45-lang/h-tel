@@ -1,12 +1,24 @@
+import { useState } from 'react';
 import { Card, Box, Typography, Stack, Chip, Button, Grid } from '@mui/material';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { rapports } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 export default function Reports() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const rows = filterRecords(rapports, searchQuery, ['nom', 'periode', 'format', 'genere', 'id']);
+
   return (
     <Box>
+      <SearchField
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Rechercher un rapport par nom, période, format…"
+        sx={{ mb: 2, maxWidth: 420 }}
+      />
       <Grid container spacing={2} sx={{ mb: 1 }}>
         {[
           { label: 'Rapport d’occupation', desc: 'Par chambre, par catégorie, par période' },
@@ -31,7 +43,7 @@ export default function Reports() {
       <Card sx={{ p: 3, mt: 1.5 }}>
         <Typography variant="h6" sx={{ mb: 2 }}>Rapports générés récemment</Typography>
         <Stack spacing={1.4}>
-          {rapports.map((r) => (
+          {rows.map((r) => (
             <Stack key={r.id} direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 1.6, borderRadius: '12px', border: `1px solid ${tokens.color.line}` }}>
               <Stack direction="row" spacing={1.6} alignItems="center">
                 <Box sx={{ width: 38, height: 38, borderRadius: '9px', bgcolor: tokens.color.cream, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

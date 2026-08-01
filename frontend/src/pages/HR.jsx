@@ -3,8 +3,10 @@ import {
   Grid, Card, Box, Typography, Stack, Chip, Avatar, Tabs, Tab,
   Table, TableHead, TableRow, TableCell, TableBody
 } from '@mui/material';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { employees, presenceLog, payroll, leaveRequests, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const statutStyle = {
   Présent: { bg: tokens.color.successSoft, fg: tokens.color.success },
@@ -19,7 +21,13 @@ const statutStyle = {
 
 export default function HR() {
   const [tab, setTab] = useState('effectif');
+  const [searchQuery, setSearchQuery] = useState('');
   const present = employees.filter((e) => e.statut === 'Présent').length;
+
+  const employeesRows = filterRecords(employees, searchQuery, ['nom', 'poste', 'departement', 'statut', 'id', 'contrat', 'dateEmbauche']);
+  const presenceRows = filterRecords(presenceLog, searchQuery, ['employe', 'lieu', 'statut', 'arrivee', 'depart']);
+  const payrollRows = filterRecords(payroll, searchQuery, ['employe', 'salaireBase', 'primes', 'deductions', 'net']);
+  const leaveRows = filterRecords(leaveRequests, searchQuery, ['employe', 'type', 'du', 'au', 'statut']);
 
   return (
     <Box>
@@ -44,10 +52,17 @@ export default function HR() {
         </Grid>
       </Grid>
 
+      <SearchField
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Rechercher un employé par nom, poste, département, statut, contrat…"
+        sx={{ mt: 2.5, mb: 2, maxWidth: 420 }}
+      />
+
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
-        sx={{ mt: 2.5, mb: 2, minHeight: 36, '& .MuiTab-root': { minHeight: 36, textTransform: 'none', fontWeight: 600, fontSize: 13.5 } }}
+        sx={{ mb: 2, minHeight: 36, '& .MuiTab-root': { minHeight: 36, textTransform: 'none', fontWeight: 600, fontSize: 13.5 } }}
       >
         <Tab label="Effectif" value="effectif" />
         <Tab label="Présence" value="presence" />
@@ -57,7 +72,7 @@ export default function HR() {
 
       {tab === 'effectif' && (
         <Grid container spacing={2.5}>
-          {employees.map((e) => (
+          {employeesRows.map((e) => (
             <Grid item xs={12} sm={6} md={4} key={e.id}>
               <Card sx={{ p: 2.4 }}>
                 <Stack direction="row" spacing={1.6} alignItems="center">
@@ -91,7 +106,7 @@ export default function HR() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {presenceLog.map((p) => (
+              {presenceRows.map((p) => (
                 <TableRow key={p.id} hover>
                   <TableCell sx={{ fontWeight: 500 }}>{p.employe}</TableCell>
                   <TableCell sx={{ fontFamily: tokens.font.mono }}>{p.arrivee}</TableCell>
@@ -118,7 +133,7 @@ export default function HR() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {payroll.map((p) => (
+              {payrollRows.map((p) => (
                 <TableRow key={p.id} hover>
                   <TableCell sx={{ fontWeight: 500 }}>{p.employe}</TableCell>
                   <TableCell sx={{ fontFamily: tokens.font.mono }}>{currency(p.salaireBase)}</TableCell>
@@ -143,7 +158,7 @@ export default function HR() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {leaveRequests.map((l) => (
+              {leaveRows.map((l) => (
                 <TableRow key={l.id} hover>
                   <TableCell sx={{ fontWeight: 500 }}>{l.employe}</TableCell>
                   <TableCell>{l.type}</TableCell>

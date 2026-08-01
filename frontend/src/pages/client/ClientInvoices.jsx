@@ -6,8 +6,10 @@ import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import PrintRoundedIcon from '@mui/icons-material/PrintRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
+import SearchField from '../../components/common/SearchField.jsx';
 import { tokens } from '../../theme.js';
 import { clientInvoicesData, currency } from '../../data/mockData.js';
+import { filterRecords } from '../../utils/searchUtils.js';
 
 const statutStyle = {
   'Payée': { bg: tokens.color.successSoft, fg: tokens.color.success },
@@ -17,22 +19,32 @@ const statutStyle = {
 export default function ClientInvoices() {
   const [openInvoice, setOpenInvoice] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const rows = filterRecords(clientInvoicesData, searchQuery, ['id', 'periode', 'date', 'total', 'statut', 'methode']);
 
   const showToast = (msg, severity = 'info') => setSnackbar({ open: true, message: msg, severity });
 
   return (
     <Box>
       <Card sx={{ p: 3, mb: 2.5, bgcolor: tokens.color.navy, color: '#fff' }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ReceiptLongRoundedIcon />
-          </Box>
-          <Box>
-            <Typography variant="h5">Mes Factures</Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-              Consultez, téléchargez, imprimez — historique complet de vos séjours.
-            </Typography>
-          </Box>
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ flexWrap: 'wrap', gap: 1.5 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ReceiptLongRoundedIcon />
+            </Box>
+            <Box>
+              <Typography variant="h5">Mes Factures</Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                Consultez, téléchargez, imprimez — historique complet de vos séjours.
+              </Typography>
+            </Box>
+          </Stack>
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Rechercher une facture, un statut, une période…"
+            sx={{ minWidth: { sm: 240 } }}
+          />
         </Stack>
       </Card>
 
@@ -49,7 +61,7 @@ export default function ClientInvoices() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {clientInvoicesData.map((inv) => (
+            {rows.map((inv) => (
               <TableRow key={inv.id} hover>
                 <TableCell sx={{ fontFamily: tokens.font.mono, fontWeight: 700 }}>{inv.id}</TableCell>
                 <TableCell>{inv.periode}</TableCell>

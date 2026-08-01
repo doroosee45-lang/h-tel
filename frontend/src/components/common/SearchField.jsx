@@ -13,13 +13,15 @@ export default function SearchField({
   placeholder = 'Rechercher…',
   fullWidth = false,
   size = 'small',
-  sx = {}
+  sx = {},
+  label
 }) {
   return (
     <TextField
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
+      label={label}
       size={size}
       fullWidth={fullWidth}
       sx={{

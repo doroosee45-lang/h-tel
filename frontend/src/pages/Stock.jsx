@@ -1,11 +1,20 @@
+import { useState } from 'react';
 import { Card, Box, Typography, Stack, Chip, Table, TableHead, TableRow, TableCell, TableBody, Button, LinearProgress } from '@mui/material';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { Link } from 'react-router-dom';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { stockItems, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 export default function Stock() {
+  const [searchQuery, setSearchQuery] = useState('');
   const critiques = stockItems.filter((s) => s.statut === 'Critique');
+  const rows = filterRecords(
+    stockItems,
+    searchQuery,
+    ['produit', 'categorie', 'fournisseur', 'statut', 'id', 'quantite', 'seuil', 'prixAchat']
+  );
 
   return (
     <Box>
@@ -21,9 +30,17 @@ export default function Stock() {
       )}
 
       <Card sx={{ overflow: 'hidden' }}>
-        <Box sx={{ p: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ p: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
           <Typography variant="h6">Inventaire</Typography>
-          <Button variant="contained" color="secondary" component={Link} to="/achats" sx={{ boxShadow: 'none' }}>Voir le module Achats →</Button>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems="center">
+            <SearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Rechercher un produit, fournisseur, catégorie…"
+              sx={{ minWidth: { sm: 260 } }}
+            />
+            <Button variant="contained" color="secondary" component={Link} to="/achats" sx={{ boxShadow: 'none' }}>Voir le module Achats →</Button>
+          </Stack>
         </Box>
         <Table>
           <TableHead>
@@ -34,7 +51,7 @@ export default function Stock() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {stockItems.map((s) => (
+            {rows.map((s) => (
               <TableRow key={s.id} hover>
                 <TableCell>
                   <Stack direction="row" spacing={1.4} alignItems="center">

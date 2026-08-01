@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Grid, Card, Box, Typography, Stack, Chip, Button, Dialog, DialogContent, TextField, Snackbar, Alert, Divider } from '@mui/material';
 import LocalActivityRoundedIcon from '@mui/icons-material/LocalActivityRounded';
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
+import SearchField from '../../components/common/SearchField.jsx';
 import { tokens } from '../../theme.js';
 import { activities, clientActivitiesData, currency } from '../../data/mockData.js';
+import { filterRecords } from '../../utils/searchUtils.js';
 
 const statutStyle = {
   'Terminée': { bg: tokens.color.successSoft, fg: tokens.color.success },
@@ -17,6 +19,9 @@ export default function ClientActivities() {
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [bookingForm, setBookingForm] = useState({ date: '2026-08-05', personnes: 2 });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const availableActivities = filterRecords(activities, searchQuery, ['nom', 'horaire', 'prix', 'description']);
+  const filteredBookings = filterRecords(bookings, searchQuery, ['id', 'nom', 'date', 'statut', 'montant', 'methode']);
 
   const handleBook = () => {
     if (!selectedActivity) return;
@@ -38,22 +43,30 @@ export default function ClientActivities() {
   return (
     <Box>
       <Card sx={{ p: 3, mb: 2.5, bgcolor: tokens.color.navy, color: '#fff' }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <LocalActivityRoundedIcon />
-          </Box>
-          <Box>
-            <Typography variant="h5">Mes Activités</Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-              Réservez et suivez vos activités : spa, piscine, excursions, sport, conférences, transport.
-            </Typography>
-          </Box>
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ flexWrap: 'wrap', gap: 1.5 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <LocalActivityRoundedIcon />
+            </Box>
+            <Box>
+              <Typography variant="h5">Mes Activités</Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                Réservez et suivez vos activités : spa, piscine, excursions, sport, conférences, transport.
+              </Typography>
+            </Box>
+          </Stack>
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Rechercher une activité, une réservation…"
+            sx={{ minWidth: { sm: 240 } }}
+          />
         </Stack>
       </Card>
 
       <Typography variant="h6" sx={{ mb: 2 }}>Réserver une activité</Typography>
       <Grid container spacing={2.5} sx={{ mb: 4 }}>
-        {activities.map((a) => (
+        {availableActivities.map((a) => (
           <Grid item xs={12} sm={6} md={4} key={a.id}>
             <Card sx={{ overflow: 'hidden', height: '100%' }}>
               <Box sx={{ height: 130, overflow: 'hidden' }}>
@@ -87,7 +100,7 @@ export default function ClientActivities() {
 
       <Typography variant="h6" sx={{ mb: 2 }}>Mes réservations d’activités</Typography>
       <Grid container spacing={2.5}>
-        {bookings.map((b) => (
+        {filteredBookings.map((b) => (
           <Grid item xs={12} md={6} key={b.id}>
             <Card sx={{ p: 3 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>

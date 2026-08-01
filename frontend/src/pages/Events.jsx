@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Card, Box, Typography, Stack, Chip, Table, TableHead, TableRow, TableCell, TableBody, Button, Grid, Dialog, DialogContent, TextField, MenuItem } from '@mui/material';
 import CelebrationRoundedIcon from '@mui/icons-material/CelebrationRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { events, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const statutStyle = {
   'Confirmé': { bg: tokens.color.successSoft, fg: tokens.color.success },
@@ -15,6 +17,8 @@ const typeIcon = { Mariage: '💍', Séminaire: '💼', Conférence: '🎤', Ann
 export default function Events() {
   const [openAddEvent, setOpenAddEvent] = useState(false);
   const [localEvents, setLocalEvents] = useState(events);
+  const [searchQuery, setSearchQuery] = useState('');
+  const rows = filterRecords(localEvents, searchQuery, ['type', 'client', 'salle', 'date', 'traiteur', 'statut', 'montant', 'id']);
   const [newEvent, setNewEvent] = useState({
     type: 'Mariage',
     client: '',
@@ -40,9 +44,17 @@ export default function Events() {
       </Grid>
 
       <Card sx={{ overflow: 'hidden', mt: 2.5 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 3, pb: 1.5 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 3, pb: 1.5, flexWrap: 'wrap', gap: 1.5 }}>
           <Typography variant="h6">Calendrier des événements</Typography>
-          <Button variant="contained" color="secondary" sx={{ boxShadow: 'none' }} onClick={() => setOpenAddEvent(true)}>+ Nouvel événement</Button>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems="center">
+            <SearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Rechercher par type, client, salle, statut…"
+              sx={{ minWidth: { sm: 260 } }}
+            />
+            <Button variant="contained" color="secondary" sx={{ boxShadow: 'none' }} onClick={() => setOpenAddEvent(true)}>+ Nouvel événement</Button>
+          </Stack>
         </Stack>
         <Table>
           <TableHead>
@@ -53,7 +65,7 @@ export default function Events() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {localEvents.map((e) => (
+            {rows.map((e) => (
               <TableRow key={e.id} hover>
                 <TableCell>{typeIcon[e.type]} {e.type}</TableCell>
                 <TableCell sx={{ fontWeight: 500 }}>{e.client}</TableCell>

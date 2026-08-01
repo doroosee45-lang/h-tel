@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Card, Typography, Stack, Chip, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { notifications } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const statutStyle = {
   'Envoyée': { bg: tokens.color.infoSoft, fg: tokens.color.info },
@@ -10,11 +13,21 @@ const statutStyle = {
 };
 
 export default function Notifications() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const rows = filterRecords(notifications, searchQuery, ['titre', 'destinataire', 'canal', 'heure', 'statut', 'detail', 'type']);
   return (
     <Card sx={{ overflow: 'hidden' }}>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 3, pb: 1.5 }}>
-        <NotificationsRoundedIcon sx={{ color: tokens.color.gold }} />
-        <Typography variant="h6">Journal des notifications push</Typography>
+      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ p: 3, pb: 1.5, flexWrap: 'wrap', gap: 1.5 }}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <NotificationsRoundedIcon sx={{ color: tokens.color.gold }} />
+          <Typography variant="h6">Journal des notifications push</Typography>
+        </Stack>
+        <SearchField
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Rechercher par titre, destinataire, canal…"
+          sx={{ minWidth: { sm: 260 } }}
+        />
       </Stack>
       <Table>
         <TableHead>
@@ -25,7 +38,7 @@ export default function Notifications() {
           </TableRow>
         </TableHead>
         <TableBody>
-          {notifications.map((n) => (
+          {rows.map((n) => (
             <TableRow key={n.id} hover>
               <TableCell sx={{ fontWeight: 500 }}>{n.titre}</TableCell>
               <TableCell>{n.destinataire}</TableCell>

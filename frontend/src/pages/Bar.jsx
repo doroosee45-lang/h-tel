@@ -3,19 +3,32 @@ import { Grid, Card, Box, Typography, Stack, Chip, LinearProgress, Tabs, Tab, Bu
 import LocalBarRoundedIcon from '@mui/icons-material/LocalBarRounded';
 import QRFrame from '../components/common/QRFrame.jsx';
 import CartSummary from '../components/common/CartSummary.jsx';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { AppContext } from '../context/AppContext.jsx';
 import { barItems, barCategories, currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 export default function Bar() {
   const [tab, setTab] = useState('Tous');
+  const [searchQuery, setSearchQuery] = useState('');
   const { addToCart, userRole } = useContext(AppContext);
   const isClient = userRole === 'Client';
   const cats = ['Tous', ...barCategories];
-  const items = barItems.filter((i) => tab === 'Tous' || i.categorie === tab);
+  const items = filterRecords(
+    barItems.filter((i) => tab === 'Tous' || i.categorie === tab),
+    searchQuery,
+    ['nom', 'categorie', 'marque', 'volume', 'prix', 'description', 'id', 'stock']
+  );
 
   return (
     <Box>
+      <SearchField
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Rechercher une boisson, une marque, une catégorie…"
+        sx={{ mb: 2.5, maxWidth: 360 }}
+      />
       <Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}

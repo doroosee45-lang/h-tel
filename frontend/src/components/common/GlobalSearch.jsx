@@ -2,7 +2,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Stack, Typography, Dialog, InputBase, List, ListItemButton,
-  ListItemIcon, ListItemText, Chip, Divider, CircularProgress, IconButton
+  ListItemIcon, ListItemText, Chip, Divider, IconButton
 } from '@mui/material';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
@@ -25,14 +25,20 @@ import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded';
 import RoomServiceRoundedIcon from '@mui/icons-material/RoomServiceRounded';
 import QrCode2RoundedIcon from '@mui/icons-material/QrCode2Rounded';
 import DescriptionRoundedIcon from '@mui/icons-material/DescriptionRounded';
+import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
+import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded';
 import { AppContext } from '../../context/AppContext.jsx';
 import { tokens } from '../../theme.js';
-import { multiSearch, highlightSegments } from '../../utils/searchUtils.js';
+import { multiSearchRanked, highlightSegments } from '../../utils/searchUtils.js';
 import {
-  rooms, reservations, menuItems, barItems, clients, financeJournal, stockItems,
-  employees, activities, notifications, auditLogs, events, roomServiceOrders,
+  rooms as staticRooms,
+  reservations as staticReservations,
+  menuItems, barItems, clients, stockItems,
+  employees, activities, notifications as staticNotifications,
+  auditLogs as staticAuditLogs, events, roomServiceOrders,
   purchaseRequests, restaurantTables, kitchenOrders, concierge, qrCodes,
-  rapports, clientInvoicesData, clientOrdersData, clientActivitiesData, systemUsers
+  rapports, clientInvoicesData, clientOrdersData, clientActivitiesData,
+  systemUsers, payments as staticPayments, hotels
 } from '../../data/mockData.js';
 
 const C = {
@@ -55,7 +61,9 @@ const C = {
   fournisseurs: <LocalShippingRoundedIcon />,
   roomService: <RoomServiceRoundedIcon />,
   qr: <QrCode2RoundedIcon />,
-  rapports: <DescriptionRoundedIcon />
+  rapports: <DescriptionRoundedIcon />,
+  planning: <CalendarMonthRoundedIcon />,
+  hotels: <ApartmentRoundedIcon />
 };
 
 function Highlight({ text, query }) {
@@ -64,7 +72,7 @@ function Highlight({ text, query }) {
     <>
       {segments.map((seg, i) =>
         seg.match ? (
-          <Box component="span" key={i} sx={{ fontWeight: 700, color: tokens.color.navy }}>
+          <Box component="span" key={i} sx={{ fontWeight: 700, color: tokens.color.navy, bgcolor: tokens.color.goldSoft, borderRadius: '3px', px: 0.2 }}>
             {seg.text}
           </Box>
         ) : (
@@ -75,27 +83,36 @@ function Highlight({ text, query }) {
   );
 }
 
+// ---------------------------------------------------------------------------
 // Construit l'index global selon le rôle connecté.
-function buildGlobalIndex(userRole, withAppState) {
+// Toutes les données viennent du contexte (si disponible) sinon des mocks.
+// ---------------------------------------------------------------------------
+function buildGlobalIndex(userRole, appState) {
   const isAdmin = userRole === 'Super Admin';
   const isManager = userRole === 'Manager';
   const isClient = userRole === 'Client';
 
+  const roomsList = appState.rooms || staticRooms;
+  const reservationsList = appState.reservations || staticReservations;
+  const paymentsList = appState.payments || staticPayments;
+  const notificationsList = appState.notifications || staticNotifications;
+  const auditLogsList = appState.auditLogs || staticAuditLogs;
+
   const groups = [];
 
-  // --- Chambres (tous rôles opérationnels + client) ---
+  // --- Chambres (tous rôles) ---
   groups.push({
     key: 'chambres',
     label: 'Chambres',
     icon: C.chambres,
     route: isClient ? '/client/chambres' : '/chambres',
     visible: true,
-    records: rooms.map((r) => ({
+    records: roomsList.map((r) => ({
       titre: r.nom,
       sousTitre: `${r.id} · ${r.categorie} · Étage ${r.etage} · ${r.statut}`,
-      extra: new Intl.NumberFormat('fr-FR').format(r.prix),
+      extra: `${new Intl.NumberFormat('fr-FR').format(r.prix)} FC/nuit`,
       route: isClient ? '/client/chambres' : '/chambres',
-      fields: ['nom', 'id', 'categorie', 'statut', 'client']
+      fields: ['nom', 'id', 'categorie', 'statut', 'client', 'surface', 'lits', 'description', 'equipements', 'promotion']
     }))
   });
 
@@ -106,7 +123,7 @@ function buildGlobalIndex(userRole, withAppState) {
     icon: C.reservations,
     route: isClient ? '/client/reservations' : '/reservations',
     visible: isAdmin || isManager || isClient,
-    records: (withAppState.reservations || reservations).map((r) => ({
+    records: reservationsList.map((r) => ({
       titre: `${r.client} — ${r.chambre}`,
       sousTitre: `${r.id} · ${r.arrivee} → ${r.depart} · ${r.statut} · ${r.canal || ''}`,
       extra: r.statut,
@@ -128,7 +145,7 @@ function buildGlobalIndex(userRole, withAppState) {
         sousTitre: `${m.categorie} · ${m.temps}${m.allergenes?.length ? ` · Allergènes: ${m.allergenes.join(', ')}` : ''}`,
         extra: `${new Intl.NumberFormat('fr-FR').format(m.prix)} FC`,
         route: isClient ? '/client/restaurant' : '/restaurant',
-        fields: ['nom', 'categorie', 'description', 'prix', 'allergenes']
+        fields: ['nom', 'categorie', 'description', 'prix', 'allergenes', 'ingredients', 'temps']
       }))
     });
   }
@@ -182,12 +199,12 @@ function buildGlobalIndex(userRole, withAppState) {
         sousTitre: `${c.nationalite} · ${c.telephone} · ${c.email}`,
         extra: `${c.fidelite} · ${c.pointsFidelite} pts`,
         route: '/crm',
-        fields: ['nom', 'nationalite', 'telephone', 'email', 'fidelite']
+        fields: ['nom', 'nationalite', 'telephone', 'email', 'fidelite', 'id']
       }))
     });
   }
 
-  // --- Factures (client) / Finance (admin-manager) ---
+  // --- Factures (client) ---
   if (isClient) {
     groups.push({
       key: 'factures',
@@ -195,7 +212,7 @@ function buildGlobalIndex(userRole, withAppState) {
       icon: C.factures,
       route: '/client/factures',
       visible: true,
-      records: clientInvoicesData.map((inv) => ({
+      records: (appState.clientInvoices || clientInvoicesData).map((inv) => ({
         titre: inv.id,
         sousTitre: `${inv.periode} · ${inv.methode} · ${inv.date}`,
         extra: `${new Intl.NumberFormat('fr-FR').format(inv.total)} FC`,
@@ -206,34 +223,21 @@ function buildGlobalIndex(userRole, withAppState) {
   }
 
   // --- Paiements ---
-  if (isAdmin || isManager) {
+  if (isAdmin || isManager || isClient) {
+    const route = isClient ? '/client/paiements' : '/paiements';
+    const isClientView = isClient;
     groups.push({
       key: 'paiements',
-      label: 'Paiements',
+      label: isClientView ? 'Mes Paiements' : 'Paiements',
       icon: C.paiements,
-      route: '/paiements',
+      route,
       visible: true,
-      records: (withAppState.payments || []).map((p) => ({
-        titre: `${p.reference || p.client || 'Paiement'}`,
-        sousTitre: `${p.type || ''} · ${p.methode || p.methodePaiement || ''} · ${p.statut || ''}`,
-        extra: p.montant != null ? `${new Intl.NumberFormat('fr-FR').format(p.montant)} FC` : '',
-        route: '/paiements',
-        fields: ['reference', 'client', 'type', 'methode', 'methodePaiement', 'statut', 'montant']
-      }))
-    });
-  } else if (isClient) {
-    groups.push({
-      key: 'paiements',
-      label: 'Paiements',
-      icon: C.paiements,
-      route: '/client/paiements',
-      visible: true,
-      records: (withAppState.payments || []).filter((p) => p.client === 'M. Kanyinda Tshibola').map((p) => ({
-        titre: `${p.reference || p.client || 'Paiement'}`,
-        sousTitre: `${p.type || ''} · ${p.methode || p.methodePaiement || ''} · ${p.statut || ''}`,
-        extra: p.montant != null ? `${new Intl.NumberFormat('fr-FR').format(p.montant)} FC` : '',
-        route: '/client/paiements',
-        fields: ['reference', 'client', 'type', 'methode', 'methodePaiement', 'statut', 'montant']
+      records: paymentsList.map((p) => ({
+        titre: p.reference || p.client || 'Paiement',
+        sousTitre: `${p.type || ''} · ${p.methode || p.methodePaiement || ''} · ${p.client || ''}`,
+        extra: p.montant != null ? `${new Intl.NumberFormat('fr-FR').format(p.montant)} FC · ${p.statut || ''}` : p.statut || '',
+        route,
+        fields: ['reference', 'client', 'type', 'methode', 'methodePaiement', 'statut', 'montant', 'id', 'date']
       }))
     });
   }
@@ -246,12 +250,12 @@ function buildGlobalIndex(userRole, withAppState) {
       icon: C.utilisateurs,
       route: '/admin/utilisateurs',
       visible: true,
-      records: (systemUsers || []).map((u) => ({
+      records: (appState.systemUsers || systemUsers).map((u) => ({
         titre: u.nom,
         sousTitre: `${u.email || ''} · ${u.role || ''} · ${u.statut || ''}`,
         extra: u.role || '',
         route: '/admin/utilisateurs',
-        fields: ['nom', 'email', 'role', 'statut']
+        fields: ['nom', 'email', 'role', 'statut', 'id', 'derniereConnexion']
       }))
     });
   }
@@ -269,7 +273,7 @@ function buildGlobalIndex(userRole, withAppState) {
         sousTitre: `${s.categorie} · Fournisseur: ${s.fournisseur}`,
         extra: `${s.quantite} unités · ${s.statut}`,
         route: '/stock',
-        fields: ['produit', 'categorie', 'fournisseur', 'statut']
+        fields: ['produit', 'categorie', 'fournisseur', 'statut', 'id', 'prixAchat']
       }))
     });
   }
@@ -287,7 +291,7 @@ function buildGlobalIndex(userRole, withAppState) {
         sousTitre: `${e.poste} · ${e.departement}`,
         extra: e.statut,
         route: '/rh',
-        fields: ['nom', 'poste', 'departement', 'statut']
+        fields: ['nom', 'poste', 'departement', 'statut', 'id', 'contrat']
       }))
     });
   }
@@ -300,7 +304,7 @@ function buildGlobalIndex(userRole, withAppState) {
       icon: C.notifications,
       route: isClient ? '/client/notifications' : '/notifications',
       visible: true,
-      records: (withAppState.notifications || notifications).map((n) => ({
+      records: notificationsList.map((n) => ({
         titre: n.titre || n.detail,
         sousTitre: `${n.destinataire || n.type || ''} · ${n.canal || n.heure || ''}`,
         extra: n.heure || n.statut || '',
@@ -318,7 +322,7 @@ function buildGlobalIndex(userRole, withAppState) {
       icon: C.audit,
       route: '/audit-logs',
       visible: true,
-      records: (withAppState.auditLogs || auditLogs).map((log) => ({
+      records: auditLogsList.map((log) => ({
         titre: log.action,
         sousTitre: `${log.user} · ${log.module} · ${log.timestamp || ''}`,
         extra: log.status || '',
@@ -339,9 +343,9 @@ function buildGlobalIndex(userRole, withAppState) {
       records: events.map((e) => ({
         titre: `${e.type} — ${e.client}`,
         sousTitre: `${e.salle} · ${e.date} · ${e.traiteur}`,
-        extra: `${new Intl.NumberFormat('fr-FR').format(e.montant)} FC`,
+        extra: `${new Intl.NumberFormat('fr-FR').format(e.montant)} FC · ${e.statut}`,
         route: '/evenements',
-        fields: ['type', 'client', 'salle', 'date', 'traiteur', 'statut', 'montant']
+        fields: ['type', 'client', 'salle', 'date', 'traiteur', 'statut', 'montant', 'id']
       }))
     });
   }
@@ -354,7 +358,7 @@ function buildGlobalIndex(userRole, withAppState) {
       icon: C.commandes,
       route: '/client/commandes',
       visible: true,
-      records: clientOrdersData.map((o) => ({
+      records: (appState.clientOrders || clientOrdersData).map((o) => ({
         titre: o.id,
         sousTitre: `${o.type} · ${new Date(o.date).toLocaleDateString('fr-FR')} · ${o.methode}`,
         extra: o.statut,
@@ -377,7 +381,7 @@ function buildGlobalIndex(userRole, withAppState) {
         sousTitre: `${o.id} · Chambre ${o.chambre} · ${o.heure}`,
         extra: o.statut,
         route: '/room-service',
-        fields: ['id', 'client', 'chambre', 'items', 'statut', 'heure']
+        fields: ['id', 'client', 'chambre', 'items', 'statut', 'heure', 'montant']
       }))
     });
   }
@@ -410,10 +414,10 @@ function buildGlobalIndex(userRole, withAppState) {
       visible: true,
       records: purchaseRequests.map((p) => ({
         titre: p.produit,
-        sousTitre: `${p.id} · Fournisseur: ${p.fournisseur}`,
+        sousTitre: `${p.id} · Fournisseur: ${p.fournisseur} · Demandeur: ${p.demandeur}`,
         extra: p.etape,
         route: '/achats',
-        fields: ['produit', 'fournisseur', 'demandeur', 'etape']
+        fields: ['produit', 'fournisseur', 'demandeur', 'etape', 'id']
       }))
     });
   }
@@ -454,11 +458,87 @@ function buildGlobalIndex(userRole, withAppState) {
     });
   }
 
-  return groups;
+  // --- Tables restaurant (admin / manager) ---
+  if (isAdmin || isManager) {
+    groups.push({
+      key: 'tables',
+      label: 'Tables Restaurant',
+      icon: C.restaurant,
+      route: '/restaurant',
+      visible: true,
+      records: restaurantTables.map((t) => ({
+        titre: `Table ${t.numero}`,
+        sousTitre: `${t.zone} · ${t.capacite} pers.`,
+        extra: t.statut,
+        route: '/restaurant',
+        fields: ['id', 'numero', 'zone', 'capacite', 'statut']
+      }))
+    });
+  }
+
+  // --- Commandes cuisine (admin / manager) ---
+  if (isAdmin || isManager) {
+    groups.push({
+      key: 'cuisine',
+      label: 'Commandes Cuisine',
+      icon: C.commandes,
+      route: '/restaurant',
+      visible: true,
+      records: kitchenOrders.map((k) => ({
+        titre: k.id,
+        sousTitre: `${k.table} · ${k.items.join(', ')}`,
+        extra: k.statut,
+        route: '/restaurant',
+        fields: ['id', 'table', 'items', 'statut', 'heure']
+      }))
+    });
+  }
+
+  // --- Activités client (client) ---
+  if (isClient) {
+    groups.push({
+      key: 'activitesClient',
+      label: 'Mes Activités',
+      icon: C.activites,
+      route: '/client/activites',
+      visible: true,
+      records: (appState.clientActivities || clientActivitiesData).map((a) => ({
+        titre: a.nom,
+        sousTitre: `${a.id} · ${a.date} · ${a.methode}`,
+        extra: a.statut,
+        route: '/client/activites',
+        fields: ['id', 'nom', 'date', 'statut', 'montant', 'methode']
+      }))
+    });
+  }
+
+  // --- Multi-Hôtels (admin) ---
+  if (isAdmin) {
+    groups.push({
+      key: 'hotels',
+      label: 'Multi-Hôtels',
+      icon: C.hotels,
+      route: '/multi-hotels',
+      visible: true,
+      records: hotels.map((h) => ({
+        titre: h.nom,
+        sousTitre: `${h.chambres} chambres · ${h.occupation}% occup.`,
+        extra: `${new Intl.NumberFormat('fr-FR').format(h.revenus)} FC`,
+        route: '/multi-hotels',
+        fields: ['nom', 'id', 'chambres', 'occupation', 'revenus']
+      }))
+    });
+  }
+
+  return groups.filter((g) => g.visible);
 }
 
 export default function GlobalSearch({ open, onClose }) {
-  const { userRole, payments, reservations: liveReservations, notifications: liveNotifications, auditLogs: liveAuditLogs } = useContext(AppContext);
+  const {
+    userRole,
+    payments, reservations: liveReservations, notifications: liveNotifications,
+    auditLogs: liveAuditLogs, rooms: liveRooms, clientOrders, clientActivities, clientInvoices
+  } = useContext(AppContext);
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -470,19 +550,23 @@ export default function GlobalSearch({ open, onClose }) {
       payments: payments || [],
       reservations: liveReservations,
       notifications: liveNotifications,
-      auditLogs: liveAuditLogs
+      auditLogs: liveAuditLogs,
+      rooms: liveRooms,
+      clientOrders,
+      clientActivities,
+      clientInvoices
     }),
-    [payments, liveReservations, liveNotifications, liveAuditLogs]
+    [payments, liveReservations, liveNotifications, liveAuditLogs, liveRooms, clientOrders, clientActivities, clientInvoices]
   );
 
   const index = useMemo(() => buildGlobalIndex(userRole, appState), [userRole, appState]);
 
-  // Résultats plats groupés (groupe -> liste de correspondances)
+  // Résultats plats groupés (groupe -> liste de correspondances) — tri par pertinence
   const results = useMemo(() => {
     if (!query.trim()) return [];
     const out = [];
     index.forEach((group) => {
-      const hits = multiSearch(group.records, query, group.fields);
+      const hits = multiSearchRanked(group.records, query, 'titre', group.fields);
       if (hits.length > 0) {
         out.push({ group, hits });
       }
@@ -554,7 +638,7 @@ export default function GlobalSearch({ open, onClose }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Rechercher chambres, réservations, clients, menus…"
+            placeholder="Rechercher chambres, réservations, clients, menus, stock, paiements…"
             fullWidth
             sx={{ fontSize: 15, py: 0.6 }}
           />
@@ -574,6 +658,9 @@ export default function GlobalSearch({ open, onClose }) {
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
               Tapez pour lancer une recherche dans toute l’application
             </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.8 }}>
+              Chambres · Réservations · Restaurant · Bar · Clients · Stock · Paiements · RH · Activités · Événements…
+            </Typography>
           </Box>
         )}
 
@@ -587,7 +674,6 @@ export default function GlobalSearch({ open, onClose }) {
         )}
 
         {results.map(({ group, hits }, gi) => {
-          // Calcul de l'index absolu du premier item de ce groupe
           const groupStart = results.slice(0, gi).reduce((sum, g) => sum + g.hits.length, 0);
           return (
             <Box key={group.key}>
@@ -653,6 +739,7 @@ export default function GlobalSearch({ open, onClose }) {
           <Typography variant="caption" color="text.secondary">↑↓ Naviguer</Typography>
           <Typography variant="caption" color="text.secondary">Entrée Ouvrir</Typography>
           <Typography variant="caption" color="text.secondary">Échap Fermer</Typography>
+          <Typography variant="caption" color="text.secondary">Ctrl+K Recherche rapide</Typography>
         </Stack>
       </Box>
     </Dialog>

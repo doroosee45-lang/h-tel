@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Grid, Card, Box, Typography, Stack, Chip, Button, Dialog, DialogContent, TextField, MenuItem } from '@mui/material';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { purchaseRequests, purchaseSteps } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const stepColor = {
   Demande: tokens.color.info,
@@ -14,14 +16,24 @@ export default function Purchases() {
   const [openAddPurchase, setOpenAddPurchase] = useState(false);
   const [localRequests, setLocalRequests] = useState(purchaseRequests);
   const [newPurchase, setNewPurchase] = useState({ produit: '', quantite: 1, demandeur: 'Responsable Stock', etape: 'Demande', fournisseur: '' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredRequests = filterRecords(localRequests, searchQuery, ['produit', 'fournisseur', 'demandeur', 'etape', 'quantite', 'id']);
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5, flexWrap: 'wrap', gap: 1.5 }}>
         <Typography variant="body2" color="text.secondary">
           Suivi des demandes d’achat, de la validation jusqu’à la réception marchandises.
         </Typography>
-        <Button variant="contained" color="secondary" sx={{ boxShadow: 'none' }} onClick={() => setOpenAddPurchase(true)}>+ Nouvelle demande</Button>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems="center">
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Rechercher un produit, fournisseur, demandeur, étape…"
+            sx={{ minWidth: { sm: 260 } }}
+          />
+          <Button variant="contained" color="secondary" sx={{ boxShadow: 'none' }} onClick={() => setOpenAddPurchase(true)}>+ Nouvelle demande</Button>
+        </Stack>
       </Stack>
 
       <Grid container spacing={2}>
@@ -34,7 +46,7 @@ export default function Purchases() {
               </Stack>
             </Box>
             <Stack spacing={1.4}>
-              {localRequests.filter((p) => p.etape === step).map((p) => (
+              {filteredRequests.filter((p) => p.etape === step).map((p) => (
                 <Card key={p.id} sx={{ p: 1.8, borderTop: `3px solid ${stepColor[step]}` }}>
                   <Typography sx={{ fontFamily: tokens.font.mono, fontSize: 11, color: 'text.secondary' }}>{p.id}</Typography>
                   <Typography sx={{ fontWeight: 600, fontSize: 14, mt: 0.2 }}>{p.produit}</Typography>
@@ -42,7 +54,7 @@ export default function Purchases() {
                   <Chip label={p.demandeur} size="small" sx={{ mt: 1, fontSize: 10.5, bgcolor: tokens.color.cream }} />
                 </Card>
               ))}
-              {localRequests.filter((p) => p.etape === step).length === 0 && (
+              {filteredRequests.filter((p) => p.etape === step).length === 0 && (
                 <Box sx={{ p: 2, textAlign: 'center', border: `1px dashed ${tokens.color.line}`, borderRadius: '12px' }}>
                   <Typography variant="caption" color="text.secondary">Aucune demande</Typography>
                 </Box>

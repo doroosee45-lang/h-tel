@@ -4,9 +4,11 @@ import {
   TableCell, TableBody, TextField, MenuItem, Avatar, Tooltip, Dialog, DialogContent
 } from '@mui/material';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { AppContext } from '../context/AppContext.jsx';
 import { kpis, clients, currency } from '../data/mockData.js';
 import { tokens } from '../theme.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const statutColor = {
   'Confirmée': { bg: tokens.color.successSoft, fg: tokens.color.success },
@@ -69,11 +71,16 @@ export default function Reservations() {
     depart: '2026-08-02'
   });
   const { selectedRoom, setSelectedRoom, reservations, setReservations, rooms, setRooms } = useContext(AppContext);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const totalChambres = kpis.chambresOccupees + kpis.chambresLibres + kpis.chambresNettoyage + kpis.chambresMaintenance;
   const availability = buildAvailability(totalChambres); // même total que le Dashboard, pour rester cohérent
 
-  const rows = reservations.filter((r) => filtre === 'Tous' || r.statut === filtre);
+  const rows = filterRecords(
+    reservations.filter((r) => filtre === 'Tous' || r.statut === filtre),
+    searchQuery,
+    ['id', 'client', 'chambre', 'statut', 'canal', 'arrivee', 'depart']
+  );
 
   useEffect(() => {
     if (selectedRoom) {
@@ -103,8 +110,8 @@ export default function Reservations() {
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
-        <Stack direction="row" spacing={1}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5, flexWrap: 'wrap', gap: 1.5 }}>
+        <Stack direction="row" spacing={1} flexWrap="wrap">
           {['Tous', 'Confirmée', 'En cours', 'En attente', 'Terminée'].map((f) => (
             <Chip
               key={f}
@@ -119,15 +126,23 @@ export default function Reservations() {
             />
           ))}
         </Stack>
-        <Button
-          variant="contained"
-          color="secondary"
-          startIcon={<AddRoundedIcon />}
-          sx={{ boxShadow: 'none' }}
-          onClick={() => setOpenAdd(true)}
-        >
-          Nouvelle réservation
-        </Button>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems="center">
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Rechercher par référence, client, chambre, canal…"
+            sx={{ minWidth: { sm: 260 } }}
+          />
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<AddRoundedIcon />}
+            sx={{ boxShadow: 'none' }}
+            onClick={() => setOpenAdd(true)}
+          >
+            Nouvelle réservation
+          </Button>
+        </Stack>
       </Stack>
 
       <Dialog open={openAdd} onClose={() => { setOpenAdd(false); setSelectedRoom(null); }} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>

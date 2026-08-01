@@ -50,6 +50,64 @@ export function multiSearch(records, query, fields) {
 }
 
 /**
+ * Filtre générique pour les modules : prend une liste de documents, une query
+ * et une liste de champs (ou une fonction de mapping). Compatible avec toutes
+ * les pages (sans risque d'erreur si la liste vient du contexte).
+ */
+export function filterRecords(records, query, fields) {
+  if (!Array.isArray(records)) return [];
+  if (!query || !query.trim()) return records;
+  return multiSearch(records, query, fields);
+}
+
+/**
+ * Recherche multi-critères avec score de pertinence.
+ * Retourne les enregistrements triés : correspondance en début de champ
+ * (titre) prioritaire, puis correspondance partielle.
+ *
+ * @param {Array} records - liste des enregistrements
+ * @param {string} query - requête libre
+ * @param {string|string[]} primaryField - champ(s) principal(aux) (titre)
+ * @param {string[]} [fields] - autres champs à inclure dans la recherche
+ * @returns {Array} enregistrements filtrés + triés, avec score
+ */
+export function multiSearchRanked(records, query, primaryField, fields = []) {
+  const q = normalize(query);
+  if (!q || !Array.isArray(records)) return records || [];
+  if (records.length === 0) return [];
+
+  const tokens = q.split(' ').filter(Boolean);
+  const allFields = Array.isArray(primaryField)
+    ? [...primaryField, ...fields]
+    : [primaryField, ...fields];
+
+  const scored = records
+    .map((record) => {
+      const haystack = allFields
+        .map((f) => normalize(stringifyField(record[f])))
+        .join(' ');
+      if (!tokens.every((token) => haystack.includes(token))) return null;
+
+      // Score : priorité au champ principal, puis position du match.
+      let score = 0;
+      const title = normalize(stringifyField(Array.isArray(primaryField) ? primaryField.map((f) => record[f]).join(' ') : record[primaryField]));
+      if (tokens.every((token) => title.includes(token))) {
+        score += 10;
+        const first = title.indexOf(tokens[0]);
+        if (first === 0) score += 5;
+      }
+      // Plus la correspondance est longue, meilleur score.
+      const matchedLen = tokens.reduce((s, t) => s + (haystack.includes(t) ? t.length : 0), 0);
+      score += matchedLen;
+      return { record, score };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score);
+
+  return scored.map((s) => s.record);
+}
+
+/**
  * Construit une chaîne normalisée à partir d'un objet + liste de champs
  * (utilisée pour construire un index global rapide).
  */
@@ -60,11 +118,14 @@ export function buildSearchable(record, fields) {
 /**
  * Découpe un texte en segments (match / non match) pour le surlignage.
  * Gère correctement l'écart d'index causé par les caractères accentués.
+ * Amélioré : surligne TOUS les tokens, pas seulement la première occurrence.
  */
 export function highlightSegments(text, query) {
   const raw = String(text ?? '');
   const q = normalize(query);
   if (!q) return [{ match: false, text: raw }];
+  const tokens = q.split(' ').filter(Boolean);
+  if (tokens.length === 0) return [{ match: false, text: raw }];
 
   // Construit la chaîne normalisée + l'index de correspondance raw -> norm
   const map = []; // position de chaque caractère normalisé dans le texte brut
@@ -79,23 +140,45 @@ export function highlightSegments(text, query) {
     rawIndex += ch.length;
   }
 
-  const start = norm.indexOf(q);
-  if (start === -1) return [{ match: false, text: raw }];
-  const end = start + q.length;
-  const rawStart = map[start];
-  const lastNormIdx = Math.min(end - 1, map.length - 1);
-  const lastRawIdx = map[lastNormIdx];
-  const rawEnd = lastRawIdx + raw.slice(lastRawIdx).slice(0, raw[lastRawIdx] ? 1 : 0).length;
+  // Marque les plages [start,end) normalisées qui correspondent à chaque token
+  const ranges = [];
+  tokens.forEach((token) => {
+    let fromIndex = 0;
+    while (true) {
+      const idx = norm.indexOf(token, fromIndex);
+      if (idx === -1) break;
+      ranges.push([idx, idx + token.length]);
+      fromIndex = idx + token.length;
+    }
+  });
+  if (ranges.length === 0) return [{ match: false, text: raw }];
 
-  if (rawStart < 0 || rawEnd <= rawStart || rawEnd > raw.length) {
-    return [{ match: false, text: raw }];
+  // Fusionne les plages qui se chevauchent / sont adjacentes
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged = [ranges[0]];
+  for (let i = 1; i < ranges.length; i++) {
+    const last = merged[merged.length - 1];
+    if (ranges[i][0] <= last[1]) {
+      last[1] = Math.max(last[1], ranges[i][1]);
+    } else {
+      merged.push(ranges[i]);
+    }
   }
 
-  return [
-    { match: false, text: raw.slice(0, rawStart) },
-    { match: true, text: raw.slice(rawStart, rawEnd) },
-    { match: false, text: raw.slice(rawEnd) }
-  ];
+  // Convertit les plages normalisées en indices bruts
+  const segments = [];
+  let cursor = 0;
+  merged.forEach(([ns, ne]) => {
+    const rs = map[ns];
+    const lastNormIdx = Math.min(ne - 1, map.length - 1);
+    const re = map[lastNormIdx] + (raw.slice(map[lastNormIdx]).match(/^\S/) ? 1 : 0);
+    if (rs < cursor || re > raw.length || re <= rs) return;
+    if (rs > cursor) segments.push({ match: false, text: raw.slice(cursor, rs) });
+    segments.push({ match: true, text: raw.slice(rs, re) });
+    cursor = re;
+  });
+  if (cursor < raw.length) segments.push({ match: false, text: raw.slice(cursor) });
+  return segments.length ? segments : [{ match: false, text: raw }];
 }
 
 /** Format monétaire/numérique concis pour les vignettes de résultats. */

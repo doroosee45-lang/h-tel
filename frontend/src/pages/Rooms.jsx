@@ -5,9 +5,11 @@ import QrCode2RoundedIcon from '@mui/icons-material/QrCode2Rounded';
 import LayersRoundedIcon from '@mui/icons-material/LayersRounded';
 import QRFrame from '../components/common/QRFrame.jsx';
 import RoomDetailDialog from '../components/common/RoomDetailDialog.jsx';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { AppContext } from '../context/AppContext.jsx';
 import { currency } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const statutStyle = {
   'Occupée': { bg: tokens.color.navy, fg: '#fff' },
@@ -37,8 +39,13 @@ export default function Rooms() {
   const { rooms, setRooms, reserveRoom, setReservations, addAuditLog, addNotification } = useContext(AppContext);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState('');
   const statuts = ['Toutes', 'Occupée', 'Libre', 'Nettoyage', 'Réservée', 'Maintenance'];
-  const rows = rooms.filter((r) => (isClient ? r.statut === 'Libre' : true) && (statutFiltre === 'Toutes' || r.statut === statutFiltre));
+  const rows = filterRecords(
+    rooms.filter((r) => (isClient ? r.statut === 'Libre' : true) && (statutFiltre === 'Toutes' || r.statut === statutFiltre)),
+    searchQuery,
+    ['nom', 'id', 'categorie', 'statut', 'client', 'surface', 'lits', 'description', 'equipements', 'promotion', 'etage', 'prix']
+  );
 
   // Si l'utilisateur arrive depuis la Home client avec ?book=RoomName, on ouvre le dialogue de réservation
   useEffect(() => {
@@ -107,9 +114,17 @@ export default function Rooms() {
             ))}
           </ToggleButtonGroup>
         )}
-        {!isClient && (
-          <Button variant="contained" color="secondary" sx={{ boxShadow: 'none' }} onClick={() => setOpenAddRoom(true)}>+ Ajouter une chambre</Button>
-        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems="center">
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Rechercher par nom, catégorie, statut, client, prix…"
+            sx={{ minWidth: { sm: 260 } }}
+          />
+          {!isClient && (
+            <Button variant="contained" color="secondary" sx={{ boxShadow: 'none' }} onClick={() => setOpenAddRoom(true)}>+ Ajouter une chambre</Button>
+          )}
+        </Stack>
       </Stack>
 
       <Dialog open={openAddRoom} onClose={() => setOpenAddRoom(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>

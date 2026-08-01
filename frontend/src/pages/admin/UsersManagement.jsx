@@ -6,9 +6,11 @@ import {
 import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded';
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
+import SearchField from '../../components/common/SearchField.jsx';
 import { tokens } from '../../theme.js';
 import { systemUsers as initialUsers } from '../../data/mockData.js';
 import { AppContext } from '../../context/AppContext.jsx';
+import { filterRecords } from '../../utils/searchUtils.js';
 
 const roleColor = {
   'Super Admin': { bg: tokens.color.navy, fg: '#fff' },
@@ -22,8 +24,10 @@ export default function UsersManagement() {
   const [openAdd, setOpenAdd] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [newUser, setNewUser] = useState({ nom: '', email: '', role: 'Manager' });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const active = users.filter((u) => u.statut === 'Actif').length;
+  const rows = filterRecords(users, searchQuery, ['nom', 'email', 'role', 'statut', 'derniereConnexion', 'id']);
 
   const handleAddUser = () => {
     if (!newUser.nom.trim() || !newUser.email.trim()) return;
@@ -89,14 +93,22 @@ export default function UsersManagement() {
       </Grid>
 
       <Card sx={{ overflow: 'hidden' }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 3, pb: 1.5 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 3, pb: 1.5, flexWrap: 'wrap', gap: 1.5 }}>
           <Box>
             <Typography variant="h6">Liste des utilisateurs</Typography>
             <Typography variant="caption" color="text.secondary">Toutes les actions sont enregistrées dans le journal d’audit.</Typography>
           </Box>
-          <Button variant="contained" color="secondary" startIcon={<PersonAddAltRoundedIcon />} sx={{ boxShadow: 'none' }} onClick={() => setOpenAdd(true)}>
-            Nouvel utilisateur
-          </Button>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems="center">
+            <SearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Rechercher un nom, email, rôle, statut…"
+              sx={{ minWidth: { sm: 260 } }}
+            />
+            <Button variant="contained" color="secondary" startIcon={<PersonAddAltRoundedIcon />} sx={{ boxShadow: 'none' }} onClick={() => setOpenAdd(true)}>
+              Nouvel utilisateur
+            </Button>
+          </Stack>
         </Stack>
         <Table>
           <TableHead>
@@ -107,7 +119,7 @@ export default function UsersManagement() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {users.map((u) => (
+            {rows.map((u) => (
               <TableRow key={u.id} hover>
                 <TableCell>
                   <Stack direction="row" spacing={1.4} alignItems="center">

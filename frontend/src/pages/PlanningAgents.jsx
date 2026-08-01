@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import {
-  Grid, Card, Box, Typography, Stack, Chip, Button, Dialog, DialogContent, TextField, MenuItem, Table, TableHead, TableRow, TableCell, TableBody, Snackbar, Alert
+  Grid, Card, Box, Typography, Stack, Chip, Button, Dialog, DialogContent, TextField, MenuItem, Table, 
+  TableHead, TableRow, TableCell, TableBody, Snackbar, Alert
 } from '@mui/material';
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
+import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
 import { agentShifts, teamTasks, employees } from '../data/mockData.js';
+import { filterRecords } from '../utils/searchUtils.js';
 
 const statutStyle = {
   'Planifié': { bg: tokens.color.infoSoft, fg: tokens.color.info },
@@ -24,8 +27,10 @@ export default function PlanningAgents() {
   const [openShift, setOpenShift] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [newShift, setNewShift] = useState({ employe: employees[0]?.nom || '', poste: 'Réceptionniste', jour: 'Lun', creneau: '06h – 14h', tache: 'Standard', statut: 'Planifié' });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  const filteredTasks = filterRecords(tasks, searchQuery, ['tache', 'responsable', 'statut', 'priorite']);
 
   const handleAddShift = () => {
     if (!newShift.employe) return;
@@ -97,8 +102,14 @@ export default function PlanningAgents() {
         <Grid item xs={12} lg={5}>
           <Card sx={{ p: 3 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>Tâches de l’équipe</Typography>
+            <SearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Rechercher une tâche, un responsable…"
+              sx={{ mb: 1.6 }}
+            />
             <Stack spacing={1.6}>
-              {tasks.map((t) => (
+              {filteredTasks.map((t) => (
                 <Box key={t.id} sx={{ p: 1.8, borderRadius: '12px', border: `1px solid ${tokens.color.line}` }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Chip label={t.priorite} size="small" sx={{ fontWeight: 700, fontSize: 10.5, bgcolor: prioriteStyle[t.priorite].bg, color: prioriteStyle[t.priorite].fg }} />

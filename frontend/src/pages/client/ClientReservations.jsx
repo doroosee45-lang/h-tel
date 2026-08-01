@@ -1,10 +1,12 @@
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { Grid, Card, Box, Typography, Stack, Chip, Button, Divider } from '@mui/material';
 import EventAvailableRoundedIcon from '@mui/icons-material/EventAvailableRounded';
 import PaymentRoundedIcon from '@mui/icons-material/PaymentRounded';
+import SearchField from '../../components/common/SearchField.jsx';
 import { tokens } from '../../theme.js';
 import { AppContext } from '../../context/AppContext.jsx';
 import { reservations, rooms, currency } from '../../data/mockData.js';
+import { filterRecords } from '../../utils/searchUtils.js';
 
 const statutStyle = {
   'Confirmée': { bg: tokens.color.successSoft, fg: tokens.color.success },
@@ -15,8 +17,13 @@ const statutStyle = {
 
 export default function ClientReservations() {
   const { userRole } = useContext(AppContext);
-  const clientName = userRole === 'Client' ? 'M. Kanyinda Tshibola' : 'M. Kanyinda Tshibola';
-  const myReservations = reservations.filter((r) => r.client === clientName);
+  const [searchQuery, setSearchQuery] = useState('');
+  const clientName = userRole === 'Client' ? 'M. Meya ' : 'M. osee meya';
+  const myReservations = filterRecords(
+    reservations.filter((r) => r.client === clientName),
+    searchQuery,
+    ['id', 'client', 'chambre', 'statut', 'canal', 'arrivee', 'depart']
+  );
 
   const nightsOf = (r) => Math.max(1, Math.round((new Date(r.depart) - new Date(r.arrivee)) / (1000 * 60 * 60 * 24)));
 
@@ -28,16 +35,24 @@ export default function ClientReservations() {
   return (
     <Box>
       <Card sx={{ p: 3, mb: 2.5, bgcolor: tokens.color.navy, color: '#fff' }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <EventAvailableRoundedIcon />
-          </Box>
-          <Box>
-            <Typography variant="h5">Mes Réservations</Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-              Suivi complet de vos séjours : numéro, chambre, dates, statut et paiement.
-            </Typography>
-          </Box>
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ flexWrap: 'wrap', gap: 1.5 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <EventAvailableRoundedIcon />
+            </Box>
+            <Box>
+              <Typography variant="h5">Mes Réservations</Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                Suivi complet de vos séjours : numéro, chambre, dates, statut et paiement.
+              </Typography>
+            </Box>
+          </Stack>
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Rechercher une réservation, une chambre…"
+            sx={{ minWidth: { sm: 240 } }}
+          />
         </Stack>
       </Card>
 

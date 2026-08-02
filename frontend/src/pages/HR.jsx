@@ -59,9 +59,11 @@ export default function HR() {
         sx={{ mt: 2.5, mb: 2, maxWidth: 420 }}
       />
 
-      <Tabs
+<Tabs
         value={tab}
         onChange={(_, v) => setTab(v)}
+        variant="scrollable"
+        scrollButtons="auto"
         sx={{ mb: 2, minHeight: 36, '& .MuiTab-root': { minHeight: 36, textTransform: 'none', fontWeight: 600, fontSize: 13.5 } }}
       >
         <Tab label="Effectif" value="effectif" />
@@ -96,8 +98,8 @@ export default function HR() {
       )}
 
       {tab === 'presence' && (
-        <Card sx={{ overflow: 'hidden' }}>
-          <Table>
+        <Card sx={{ overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 620 }}>
             <TableHead>
               <TableRow sx={{ bgcolor: tokens.color.cream }}>
                 {['Employé', 'Arrivée', 'Départ', 'Lieu (géolocalisation)', 'Statut'].map((h) => (
@@ -123,8 +125,8 @@ export default function HR() {
       )}
 
       {tab === 'paie' && (
-        <Card sx={{ overflow: 'hidden' }}>
-          <Table>
+        <Card sx={{ overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 600 }}>
             <TableHead>
               <TableRow sx={{ bgcolor: tokens.color.cream }}>
                 {['Employé', 'Salaire de base', 'Primes', 'Déductions', 'Net à payer'].map((h) => (
@@ -148,8 +150,8 @@ export default function HR() {
       )}
 
       {tab === 'conges' && (
-        <Card sx={{ overflow: 'hidden' }}>
-          <Table>
+        <Card sx={{ overflowX: 'auto' }}>
+          <Table sx={{ minWidth: 560 }}>
             <TableHead>
               <TableRow sx={{ bgcolor: tokens.color.cream }}>
                 {['Employé', 'Type', 'Du', 'Au', 'Statut'].map((h) => (

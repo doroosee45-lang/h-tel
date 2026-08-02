@@ -9,7 +9,6 @@ import {
   Menu,
   MenuItem,
   Divider,
-  Button,
   Chip
 } from '@mui/material';
 
@@ -23,17 +22,15 @@ import ApartmentRoundedIcon from '@mui/icons-material/ApartmentRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import SwitchAccountRoundedIcon from '@mui/icons-material/SwitchAccountRounded';
-import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
-import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 
 import { tokens } from '../../theme.js';
 import { AppContext } from '../../context/AppContext.jsx';
 import GlobalSearch from '../common/GlobalSearch.jsx';
 
 const ROLE_AVATARS = {
-  'Super Admin': 'https://i.pravatar.cc/100?img=11',
-  Manager: 'https://i.pravatar.cc/100?img=12',
-  Client: 'https://i.pravatar.cc/100?img=33'
+  'Super Admin': 'https://omedevservicefrontend.onrender.com/assets/os5-zDql6FmJ.jpeg',
+  Manager: 'https://omedevservicefrontend.onrender.com/assets/os5-zDql6FmJ.jpeg',
+  Client: 'https://omedevservicefrontend.onrender.com/assets/os5-zDql6FmJ.jpeg'
 };
 
 const ROLE_HOME = {
@@ -43,15 +40,13 @@ const ROLE_HOME = {
 };
 
 export default function Topbar({ title, subtitle, onToggleSidebar }) {
-  const { userRole, switchRole, roles, notifications, logout } = useContext(AppContext);
+const { userRole, notifications, logout } = useContext(AppContext);
   const navigate = useNavigate();
 
   const [anchorEl, setAnchorEl] = useState(null);
-  const [roleEl, setRoleEl] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
 
   const openProfile = Boolean(anchorEl);
-  const openRoles = Boolean(roleEl);
 
   const unreadCount = (notifications || []).filter((n) => n.statut !== 'Lue').length;
 
@@ -67,56 +62,55 @@ export default function Topbar({ title, subtitle, onToggleSidebar }) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const handleLogout = () => {
+const handleLogout = () => {
     logout();
     navigate('/login', { replace: true });
   };
 
-  const handleRoleChange = (role) => {
-    switchRole(role);
-    setRoleEl(null);
-    navigate(ROLE_HOME[role] || '/', { replace: true });
-  };
-
   return (
-    <Stack
+<Stack
       direction="row"
       alignItems="center"
       justifyContent="space-between"
       sx={{
-        px: { xs: 2, sm: 3, lg: 4 },
-        py: 2.5,
+        px: { xs: 1.5, sm: 3, lg: 4 },
+        py: { xs: 1.5, sm: 2.5 },
         position: 'sticky',
         top: 0,
         zIndex: 10,
         bgcolor: 'rgba(246,243,236,0.88)',
         backdropFilter: 'blur(8px)',
-        borderBottom: `1px solid ${tokens.color.line}`
+        borderBottom: `1px solid ${tokens.color.line}`,
+        maxWidth: '100%',
+        overflowX: 'hidden'
       }}
     >
       {/* GAUCHE */}
-      <Stack direction="row" spacing={1.5} alignItems="center">
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
         <IconButton
           onClick={onToggleSidebar}
           sx={{
             display: { xs: 'inline-flex', lg: 'none' },
             bgcolor: '#fff',
-            border: `1px solid ${tokens.color.line}`
+            border: `1px solid ${tokens.color.line}`,
+            flexShrink: 0
           }}
         >
           <MenuRoundedIcon />
         </IconButton>
 
-        <Box>
-          <Typography variant="h4">{title}</Typography>
+        <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+          <Typography variant="h4" sx={{ fontSize: { xs: 16, sm: 20, md: 24 }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {title}
+          </Typography>
           {subtitle && (
-            <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>{subtitle}</Typography>
+            <Typography sx={{ fontSize: 13.5, color: 'text.secondary', display: { xs: 'none', sm: 'block' } }}>{subtitle}</Typography>
           )}
         </Box>
       </Stack>
 
       {/* DROITE */}
-      <Stack direction="row" spacing={2} alignItems="center">
+      <Stack direction="row" spacing={{ xs: 0.5, sm: 1.2, md: 2 }} alignItems="center" sx={{ flexShrink: 0 }}>
         {/* Recherche globale — fonctionnelle */}
         <Stack
           direction="row"
@@ -130,19 +124,19 @@ export default function Topbar({ title, subtitle, onToggleSidebar }) {
             borderRadius: '10px',
             px: 1.5,
             py: 0.7,
-            width: 240,
+            width: { md: 200, lg: 240 },
             cursor: 'pointer',
             transition: 'border-color .2s',
             '&:hover': { borderColor: tokens.color.gold }
           }}
         >
-          <SearchRoundedIcon sx={{ color: tokens.color.gold }} />
+          <SearchRoundedIcon sx={{ color: tokens.color.gold, flexShrink: 0 }} />
           <InputBase
             placeholder="Rechercher… (Ctrl+K)"
             readOnly
             sx={{ fontSize: 13.5, width: '100%', cursor: 'pointer', '& input': { cursor: 'pointer' } }}
           />
-          <Chip label="Ctrl K" size="small" sx={{ fontFamily: tokens.font.mono, fontSize: 10, height: 20, bgcolor: tokens.color.cream, color: 'text.secondary' }} />
+          <Chip label="Ctrl K" size="small" sx={{ fontFamily: tokens.font.mono, fontSize: 10, height: 20, bgcolor: tokens.color.cream, color: 'text.secondary', flexShrink: 0 }} />
         </Stack>
 
         {/* Bouton loupe — mobile */}
@@ -171,46 +165,24 @@ export default function Topbar({ title, subtitle, onToggleSidebar }) {
             py: 0.7
           }}
         >
-          <ApartmentRoundedIcon sx={{ color: tokens.color.gold }} />
-          <Typography fontSize={13}>Hôtel Fleuve — Kinshasa</Typography>
+          <ApartmentRoundedIcon sx={{ color: tokens.color.gold, flexShrink: 0 }} />
+          <Typography fontSize={13} sx={{ whiteSpace: 'nowrap' }}>Hôtel Fleuve — Kinshasa</Typography>
         </Stack>
 
-        {/* Sélecteur de rôle */}
-        <Button
-          onClick={(e) => setRoleEl(e.currentTarget)}
-          endIcon={<KeyboardArrowDownRoundedIcon />}
-          startIcon={<SwitchAccountRoundedIcon />}
+{/* Badge de rôle (lecture seule) */}
+        <Chip
+          icon={<SwitchAccountRoundedIcon sx={{ fontSize: 16 }} />}
+          label={userRole === 'Super Admin' ? 'Admin' : userRole === 'Manager' ? 'Manager' : 'Client'}
           sx={{
-            textTransform: 'none',
-            color: tokens.color.navyDeep,
+            fontWeight: 600,
             bgcolor: tokens.color.goldSoft,
+            color: tokens.color.navyDeep,
             border: `1px solid ${tokens.color.line}`,
             borderRadius: '10px',
-            px: 1.4,
-            py: 0.7,
-            fontSize: 13,
-            fontWeight: 600,
-            '&:hover': { bgcolor: tokens.color.goldSoft }
+            height: 36,
+            '& .MuiChip-icon': { color: tokens.color.navyDeep }
           }}
-        >
-          {userRole}
-        </Button>
-        <Menu
-          anchorEl={roleEl}
-          open={openRoles}
-          onClose={() => setRoleEl(null)}
-          PaperProps={{ sx: { mt: 1, width: 240, borderRadius: 2 } }}
-        >
-          {roles.map((role) => (
-            <MenuItem key={role} onClick={() => handleRoleChange(role)} sx={{ justifyContent: 'space-between' }}>
-              <Stack direction="row" spacing={1.4} alignItems="center">
-                <Avatar src={ROLE_AVATARS[role]} sx={{ width: 28, height: 28 }} />
-                <Typography sx={{ fontSize: 13.5, fontWeight: userRole === role ? 700 : 500 }}>{role}</Typography>
-              </Stack>
-              {userRole === role && <CheckRoundedIcon sx={{ fontSize: 17, color: tokens.color.gold }} />}
-            </MenuItem>
-          ))}
-        </Menu>
+        />
 
         {/* Notification */}
         <IconButton
@@ -228,7 +200,7 @@ export default function Topbar({ title, subtitle, onToggleSidebar }) {
         {/* Avatar Profil */}
         <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
           <Avatar
-            src={ROLE_AVATARS[userRole] || 'https://i.pravatar.cc/100?img=33'}
+            src={ROLE_AVATARS[userRole] || 'https://omedevservicefrontend.onrender.com/assets/os5-zDql6FmJ.jpeg'}
             sx={{ width: 38, height: 38 }}
           />
         </IconButton>

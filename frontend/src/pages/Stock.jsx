@@ -29,7 +29,7 @@ export default function Stock() {
         </Card>
       )}
 
-      <Card sx={{ overflow: 'hidden' }}>
+      <Card sx={{ overflowX: 'auto' }}>
         <Box sx={{ p: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
           <Typography variant="h6">Inventaire</Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems="center">
@@ -42,7 +42,7 @@ export default function Stock() {
             <Button variant="contained" color="secondary" component={Link} to="/achats" sx={{ boxShadow: 'none' }}>Voir le module Achats →</Button>
           </Stack>
         </Box>
-        <Table>
+        <Table sx={{ minWidth: 780 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: tokens.color.cream }}>
               {['Produit', 'Catégorie', 'Quantité', 'Seuil', 'Prix d’achat', 'Fournisseur', 'Statut'].map((h) => (

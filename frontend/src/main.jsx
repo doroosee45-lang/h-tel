@@ -32,6 +32,10 @@ import Payments from './pages/Payments.jsx';
 import PlanningAgents from './pages/PlanningAgents.jsx';
 import UsersManagement from './pages/admin/UsersManagement.jsx';
 import RolesPermissions from './pages/admin/RolesPermissions.jsx';
+import Events from './pages/Events.jsx';
+import RoomService from './pages/RoomService.jsx';
+import Purchases from './pages/Purchases.jsx';
+import MultiHotels from './pages/MultiHotels.jsx';
 import Login from './pages/Login.jsx';
 
 // Pages client
@@ -147,6 +151,26 @@ const router = createBrowserRouter([
         path: '/planning',
         element: <RoleGuard allowed={['Super Admin', 'Manager']} fallback="/client"><PlanningAgents /></RoleGuard>,
         handle: { title: 'Planning des Agents', subtitle: 'Shifts, tâches et suivi d’équipe' }
+      },
+      {
+        path: '/evenements',
+        element: <RoleGuard allowed={['Super Admin', 'Manager']} fallback="/client"><Events /></RoleGuard>,
+        handle: { title: 'Événements', subtitle: 'Mariages, séminaires, conférences et célébrations' }
+      },
+      {
+        path: '/room-service',
+        element: <RoleGuard allowed={['Super Admin', 'Manager']} fallback="/client"><RoomService /></RoleGuard>,
+        handle: { title: 'Room Service', subtitle: 'Commandes chambres et catalogue QR Code' }
+      },
+      {
+        path: '/achats',
+        element: <RoleGuard allowed={['Super Admin']} fallback="/manager"><Purchases /></RoleGuard>,
+        handle: { title: 'Achats & Fournisseurs', subtitle: 'Demandes d’achat, validation et réception' }
+      },
+      {
+        path: '/multi-hotels',
+        element: <RoleGuard allowed={['Super Admin']} fallback="/manager"><MultiHotels /></RoleGuard>,
+        handle: { title: 'Multi-Hôtels', subtitle: 'Pilotage consolidé du groupe' }
       },
       {
         path: '/rapports',

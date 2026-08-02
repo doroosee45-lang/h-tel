@@ -16,7 +16,7 @@ export default function Notifications() {
   const [searchQuery, setSearchQuery] = useState('');
   const rows = filterRecords(notifications, searchQuery, ['titre', 'destinataire', 'canal', 'heure', 'statut', 'detail', 'type']);
   return (
-    <Card sx={{ overflow: 'hidden' }}>
+    <Card sx={{ overflowX: 'auto' }}>
       <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ p: 3, pb: 1.5, flexWrap: 'wrap', gap: 1.5 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <NotificationsRoundedIcon sx={{ color: tokens.color.gold }} />
@@ -29,7 +29,7 @@ export default function Notifications() {
           sx={{ minWidth: { sm: 260 } }}
         />
       </Stack>
-      <Table>
+      <Table sx={{ minWidth: 640 }}>
         <TableHead>
           <TableRow sx={{ bgcolor: tokens.color.cream }}>
             {['Titre', 'Destinataire', 'Canal', 'Heure', 'Statut'].map((h) => (

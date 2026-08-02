@@ -29,7 +29,7 @@ export default function RoomDetailDialog({ room, open, onClose }) {
 
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>{room.description}</Typography>
 
-            <Stack direction="row" spacing={3} sx={{ mt: 2 }}>
+<Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 3 }} sx={{ mt: 2 }}>
               <Box>
                 <Typography variant="caption" color="text.secondary">Surface</Typography>
                 <Typography sx={{ fontWeight: 600 }}>{room.surface} m²</Typography>

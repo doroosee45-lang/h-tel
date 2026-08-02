@@ -53,12 +53,12 @@ export default function PlanningAgents() {
       <Grid container spacing={2.5}>
         <Grid item xs={12} lg={7}>
           <Card sx={{ p: 3, mb: 2.5 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+<Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1.5} sx={{ mb: 2 }}>
               <Stack direction="row" spacing={1} alignItems="center">
-                <CalendarMonthRoundedIcon sx={{ color: tokens.color.gold }} />
-                <Typography variant="h6">Planning des Agents — Semaine 30</Typography>
+                <CalendarMonthRoundedIcon sx={{ color: tokens.color.gold, flexShrink: 0 }} />
+                <Typography variant="h6" sx={{ fontSize: { xs: 15, sm: 18 } }}>Planning des Agents — Semaine 30</Typography>
               </Stack>
-              <Button variant="contained" color="secondary" sx={{ boxShadow: 'none' }} onClick={() => setOpenShift(true)}>+ Créneau</Button>
+              <Button variant="contained" color="secondary" sx={{ boxShadow: 'none', flexShrink: 0 }} onClick={() => setOpenShift(true)}>+ Créneau</Button>
             </Stack>
 
             <Box sx={{ overflowX: 'auto' }}>

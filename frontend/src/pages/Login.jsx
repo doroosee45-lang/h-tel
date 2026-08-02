@@ -40,7 +40,7 @@ const ROLE_META = {
 };
 
 export default function Login() {
-  const { login, switchRole } = useContext(AppContext);
+const { login } = useContext(AppContext);
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState('Super Admin');
   const [email, setEmail] = useState('admin@sh360.cd');
@@ -237,9 +237,9 @@ export default function Login() {
               <Chip label="Aperçu rapide" size="small" />
             </Divider>
 
-            <Box sx={{ p: 2, borderRadius: '14px', bgcolor: tokens.color.cream }}>
-              <Stack direction="row" spacing={1.2} alignItems="center">
-                <WorkspacePremiumRoundedIcon sx={{ color: tokens.color.gold }} />
+<Box sx={{ p: 2, borderRadius: '14px', bgcolor: tokens.color.cream }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                <WorkspacePremiumRoundedIcon sx={{ color: tokens.color.gold, flexShrink: 0 }} />
                 <Typography variant="body2" sx={{ fontSize: 12.5 }}>
                   Démo : admin@sh360.cd / admin · manager@sh360.cd / manager · client@sh360.cd / client
                 </Typography>

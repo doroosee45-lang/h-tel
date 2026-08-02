@@ -91,7 +91,7 @@ export default function Finance() {
       </Grid>
 
       <Grid item xs={12}>
-        <Card sx={{ overflow: 'hidden' }}>
+        <Card sx={{ overflowX: 'auto' }}>
             <Box sx={{ p: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
               <Typography variant="h6">Journal de caisse — aujourd’hui</Typography>
               <SearchField
@@ -101,7 +101,7 @@ export default function Finance() {
                 sx={{ minWidth: { sm: 260 } }}
               />
             </Box>
-            <Table>
+            <Table sx={{ minWidth: 560 }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: tokens.color.cream }}>
                   {['Date', 'Libellé', 'Type', 'Montant'].map((h) => (

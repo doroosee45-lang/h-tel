@@ -29,8 +29,8 @@ export default function AuditLogs() {
         </Stack>
       </Card>
 
-      <TableContainer component={Card} sx={{ p: 2 }}>
-        <Table>
+      <TableContainer component={Card} sx={{ p: 2, overflowX: 'auto' }}>
+        <Table sx={{ minWidth: 760 }}>
           <TableHead>
             <TableRow>
               <TableCell>Heure</TableCell>

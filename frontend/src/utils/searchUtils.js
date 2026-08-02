@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
 // Utilitaires de recherche — Smart Hotel 360°
 // Recherche normalisée : insensible à la casse et aux accents (é -> e), multi-
-// champs, multi-tokens (ex: "Deluxe 2" matche "Chambre Deluxe étage 2").
+// champs, multi-tokens (ex: "Deluxe 2" matche "Chambre Deluxe étage 2"),
+// dates (JJ/MM/AAAA, AAAA-MM-JJ), téléphones (chiffres seuls) et montants.
 // ---------------------------------------------------------------------------
 
 /** Normalise une chaîne : minuscules, sans accents, espaces réduits. */
@@ -31,21 +32,86 @@ export function stringifyField(value) {
   return String(value);
 }
 
+/** Normalise un téléphone : ne garde que les chiffres (+243 81 000 0001 → 243810000001). */
+export function normalizePhone(value) {
+  const raw = stringifyField(value);
+  const digits = raw.replace(/\D/g, '');
+  // Variations usuelles : +243811234567 / 0811234567 / 243811234567
+  return [digits, digits.replace(/^00243/, '243'), digits.startsWith('0') ? digits.slice(1) : digits]
+    .filter(Boolean)
+    .join(' ');
+}
+
+/** Normalise une date dans plusieurs formats et fusiables (YYYY-MM-DD, JJ/MM/AAAA, timestamp ISO…). */
+export function normalizeDate(value) {
+  const raw = stringifyField(value);
+  const norm = normalize(raw);
+  if (!norm) return '';
+
+  let d = null;
+  // ISO auto (JS native parsing)
+  if (/^\d{4}-\d{2}-\d{2}/.test(norm)) {
+    d = new Date(norm.slice(0, 10) + 'T00:00:00');
+    if (!Number.isNaN(d.getTime())) {
+      return [
+        d.toLocaleDateString('fr-FR'),                       // 01/08/2026
+        d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }), // 01/08
+        norm.slice(0, 10)                                    // 2026-08-01
+      ].join(' ');
+    }
+  }
+  // JJ/MM/AAAA
+  const frMatch = norm.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/);
+  if (frMatch) {
+    const [, day, month, year] = frMatch;
+    d = new Date(`${year}-${month}-${day}T00:00:00`);
+    if (!Number.isNaN(d.getTime())) {
+      const iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      return [norm, `0${day}`.slice(-2) + '/0' + `0${month}`.slice(-2), iso].join(' ');
+    }
+  }
+  // String simple (ex: "2026-08-03") → fallback normalize
+  return norm;
+}
+
+/**
+ * Construit le « haystack » (paille) normalisé d'un enregistrement pour les
+ * champs listés. Applique la normalisation spéciale aux dates et téléphones.
+ */
+export function buildSearchable(record, fields) {
+  const parts = [];
+  for (const f of fields) {
+    if (record == null) continue;
+    const v = record[f];
+    // Détection automatique du type de champ par son nom
+    if (/date|arrivee|depart|periode|du|au|genere|_at$/i.test(f)) {
+      parts.push(normalizeDate(v));
+    } else if (/tel|phone|mobile|contact/i.test(f)) {
+      parts.push(normalizePhone(v));
+    } else {
+      parts.push(normalize(stringifyField(v)));
+    }
+  }
+  return parts.join(' ');
+}
+
 /**
  * Filtre une liste de documents : chaque token de `query` doit être présent
  * dans au moins un des champs listés (concaténés, normalisés).
  * Retourne la liste complète si la requête est vide.
  */
 export function multiSearch(records, query, fields) {
+  if (!Array.isArray(records)) return [];
   const q = normalize(query);
-  if (!q || !Array.isArray(records)) return records || [];
+  if (!q) return records;
   if (records.length === 0) return [];
   const tokens = q.split(' ').filter(Boolean);
+  // Si la requête ressemble à un numéro de téléphone, on ajoute la version digits purs.
+  const phoneTokens = /^\d{6,}$/.test(q.replace(/\D/g, '')) ? [normalizePhone(q)] : [];
   return records.filter((record) => {
-    const haystack = fields
-      .map((f) => normalize(stringifyField(record[f])))
-      .join(' ');
-    return tokens.every((token) => haystack.includes(token));
+    const haystack = buildSearchable(record, fields);
+    return tokens.every((token) => haystack.includes(token))
+      && phoneTokens.every((pt) => haystack.includes(pt));
   });
 }
 
@@ -83,9 +149,7 @@ export function multiSearchRanked(records, query, primaryField, fields = []) {
 
   const scored = records
     .map((record) => {
-      const haystack = allFields
-        .map((f) => normalize(stringifyField(record[f])))
-        .join(' ');
+      const haystack = buildSearchable(record, allFields);
       if (!tokens.every((token) => haystack.includes(token))) return null;
 
       // Score : priorité au champ principal, puis position du match.
@@ -105,14 +169,6 @@ export function multiSearchRanked(records, query, primaryField, fields = []) {
     .sort((a, b) => b.score - a.score);
 
   return scored.map((s) => s.record);
-}
-
-/**
- * Construit une chaîne normalisée à partir d'un objet + liste de champs
- * (utilisée pour construire un index global rapide).
- */
-export function buildSearchable(record, fields) {
-  return fields.map((f) => normalize(stringifyField(record[f]))).join(' ');
 }
 
 /**

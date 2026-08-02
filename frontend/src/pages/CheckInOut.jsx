@@ -78,8 +78,8 @@ export default function CheckInOut() {
 
   const currentStatus = lifecycleSteps[currentStage];
 
-  return (
-    <Grid container spacing={2.5}>
+return (
+    <Grid container spacing={2.5} sx={{ maxWidth: '100%', overflowX: 'hidden' }}>
       <Grid item xs={12} md={7}>
         <Card sx={{ p: 3, mb: 2.5 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -162,7 +162,7 @@ export default function CheckInOut() {
 
             <Box sx={{ p: 2, borderRadius: '16px', bgcolor: tokens.color.cream }}>
               <Typography variant="body2" color="text.secondary">Statut facture</Typography>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+<Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'flex-start', sm: 'center' }} sx={{ mt: 1 }}>
                 <Chip label={invoiceGenerated ? 'Facture générée' : 'Facture non générée'} size="small" sx={{ bgcolor: invoiceGenerated ? tokens.color.successSoft : tokens.color.line, color: invoiceGenerated ? tokens.color.success : tokens.color.navyDeep }} />
                 <Chip label={paymentCaptured ? 'Paiement reçu' : 'Paiement en attente'} size="small" sx={{ bgcolor: paymentCaptured ? tokens.color.successSoft : tokens.color.warningSoft, color: paymentCaptured ? tokens.color.success : tokens.color.warning }} />
                 <Chip label={invoiceSent ? 'Envoyée' : 'Non envoyée'} size="small" sx={{ bgcolor: invoiceSent ? tokens.color.successSoft : tokens.color.line, color: invoiceSent ? tokens.color.success : tokens.color.navyDeep }} />
@@ -198,7 +198,7 @@ export default function CheckInOut() {
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>Mode de paiement sélectionné</Typography>
           <Typography sx={{ fontWeight: 700, mb: 2 }}>{selectedPaymentMethod}</Typography>
 
-          <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+<Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
             <Button variant="outlined" fullWidth startIcon={<ReceiptLongRoundedIcon />} onClick={handleGenerateInvoice}>
               Voir la facture
             </Button>
@@ -232,7 +232,7 @@ export default function CheckInOut() {
           </Stack>
           <Typography variant="caption" color="text.secondary">Mode de paiement choisi : {selectedPaymentMethod}</Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
+<DialogActions sx={{ px: 3, pb: 3, flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={() => setInvoiceOpen(false)}>Fermer</Button>
           <Button onClick={handleDownloadPdf}>Télécharger PDF</Button>
           <Button onClick={handlePrintInvoice}>Imprimer</Button>

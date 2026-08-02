@@ -37,17 +37,17 @@ export default function ClientLoyalty() {
             <EmojiEventsRoundedIcon sx={{ fontSize: 44, color: tierColors[clientMembership.niveau] }} />
             <Typography variant="h4" sx={{ mt: 1 }}>{clientMembership.niveau}</Typography>
             <Typography variant="body2" color="text.secondary">Votre niveau actuel</Typography>
-            <Stack direction="row" justifyContent="center" spacing={2} sx={{ mt: 2 }}>
+<Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="center" spacing={2} sx={{ mt: 2 }} alignItems="center">
               <Box>
                 <Typography variant="h5">{clientMembership.points.toLocaleString('fr-FR')}</Typography>
                 <Typography variant="caption" color="text.secondary">Points</Typography>
               </Box>
-              <Divider orientation="vertical" flexItem />
+              <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
               <Box>
                 <Typography variant="h5">{clientMembership.totalSejours}</Typography>
                 <Typography variant="caption" color="text.secondary">Séjours</Typography>
               </Box>
-              <Divider orientation="vertical" flexItem />
+              <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
               <Box>
                 <Typography variant="h5">{currency(clientMembership.depensesTotales)}</Typography>
                 <Typography variant="caption" color="text.secondary">Dépensé</Typography>

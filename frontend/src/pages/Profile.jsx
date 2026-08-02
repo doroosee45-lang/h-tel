@@ -9,9 +9,9 @@ import { AppContext } from '../context/AppContext.jsx';
 import { clients } from '../data/mockData.js';
 
 const ROLE_PROFILE = {
-  'Super Admin': { photo: 'https://i.pravatar.cc/100?img=11', nom: 'Patrick Mwamba', email: 'p.mwamba@sh360.cd', telephone: '+243 81 000 0001', role: 'Super Admin', departement: 'Direction', poste: 'Administrateur Général' },
-  Manager: { photo: 'https://i.pravatar.cc/100?img=12', nom: 'Sarah Nzuzi', email: 's.nzuzi@sh360.cd', telephone: '+243 89 000 0002', role: 'Manager', departement: 'Opérations', poste: 'Chef des Agents' },
-  Client: { photo: 'https://i.pravatar.cc/100?img=33', nom: 'M. Kanyinda Tshibola', email: 'k.tshibola@mail.cd', telephone: '+243 81 000 0001', role: 'Client', departement: '—', poste: 'Client fidèle' }
+    'Super Admin': { photo: 'https://omedevservicefrontend.onrender.com/assets/os5-zDql6FmJ.jpeg', nom: 'Patrick Mwamba', email: 'p.mwamba@sh360.cd', telephone: '+243 81 000 0001', role: 'Super Admin', departement: 'Direction', poste: 'Administrateur Général' },
+    Manager: { photo: 'https://omedevservicefrontend.onrender.com/assets/os5-zDql6FmJ.jpeg', nom: 'Sarah Nzuzi', email: 's.nzuzi@sh360.cd', telephone: '+243 89 000 0002', role: 'Manager', departement: 'Opérations', poste: 'Chef des Agents' },
+  Client: { photo: 'https://omedevservicefrontend.onrender.com/assets/os5-zDql6FmJ.jpeg', nom: 'M. Kanyinda Tshibola', email: 'k.tshibola@mail.cd', telephone: '+243 81 000 0001', role: 'Client', departement: '—', poste: 'Client fidèle' }
 };
 
 export default function Profile() {

@@ -254,8 +254,8 @@ export default function Reservations() {
         </Stack>
       </Card>
 
-      <Card sx={{ overflow: 'hidden' }}>
-        <Table>
+      <Card sx={{ overflowX: 'auto' }}>
+        <Table sx={{ minWidth: 760 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: tokens.color.cream }}>
               {['Référence', 'Client', 'Chambre', 'Arrivée', 'Départ', 'Canal', 'Statut', ''].map((h) => (

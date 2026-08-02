@@ -52,11 +52,11 @@ export default function MultiHotels() {
         ))}
       </Grid>
 
-      <Card sx={{ overflow: 'hidden', mt: 2.5 }}>
+      <Card sx={{ overflowX: 'auto', mt: 2.5 }}>
         <Box sx={{ p: 3, pb: 1.5 }}>
           <Typography variant="h6">Rapport consolidé du groupe</Typography>
         </Box>
-        <Table>
+        <Table sx={{ minWidth: 520 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: tokens.color.cream }}>
               {['Hôtel', 'Chambres', 'Occupation', 'Revenus', 'Part du groupe'].map((h) => (

@@ -43,7 +43,7 @@ export default function Events() {
         ))}
       </Grid>
 
-      <Card sx={{ overflow: 'hidden', mt: 2.5 }}>
+      <Card sx={{ overflowX: 'auto', mt: 2.5 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 3, pb: 1.5, flexWrap: 'wrap', gap: 1.5 }}>
           <Typography variant="h6">Calendrier des événements</Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems="center">
@@ -56,7 +56,7 @@ export default function Events() {
             <Button variant="contained" color="secondary" sx={{ boxShadow: 'none' }} onClick={() => setOpenAddEvent(true)}>+ Nouvel événement</Button>
           </Stack>
         </Stack>
-        <Table>
+        <Table sx={{ minWidth: 760 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: tokens.color.cream }}>
               {['Type', 'Client', 'Salle', 'Date', 'Traiteur', 'Montant', 'Statut'].map((h) => (

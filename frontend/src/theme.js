@@ -93,6 +93,7 @@
 //   }
 // });
 
+
 // export default theme;
 import { createTheme, alpha } from '@mui/material/styles';
 
@@ -204,7 +205,13 @@ const theme = createTheme({
     },
     MuiButton: {
       styleOverrides: {
-        root: { borderRadius: tokens.radius.sm, paddingInline: 16, boxShadow: 'none' },
+        root: {
+          borderRadius: tokens.radius.sm,
+          paddingInline: 16,
+          boxShadow: 'none',
+          // Zone tactile minimale (44px) sur mobile
+          '@media (max-width: 600px)': { minHeight: 44 }
+        },
         containedPrimary: {
           boxShadow: tokens.shadow.sm,
           '&:hover': { boxShadow: tokens.shadow.md }
@@ -213,6 +220,27 @@ const theme = createTheme({
           color: tokens.color.navyDeep,
           boxShadow: tokens.shadow.sm,
           '&:hover': { boxShadow: tokens.shadow.md }
+        }
+      }
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': { minHeight: 44, minWidth: 44 }
+        }
+      }
+    },
+    MuiToggleButton: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': { minHeight: 44 }
+        }
+      }
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          '@media (max-width: 600px)': { minHeight: 44 }
         }
       }
     },

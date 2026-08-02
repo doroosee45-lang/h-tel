@@ -89,11 +89,11 @@ export default function ClientQR() {
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontFamily: tokens.font.mono }}>
               Membre {clientMembership.niveau} · {clientMembership.points} pts
             </Typography>
-            <Stack direction="row" justifyContent="center" spacing={1} sx={{ mt: 1.5 }}>
+<Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="center" spacing={1} sx={{ mt: 1.5 }}>
               <Chip icon={<BadgeRoundedIcon sx={{ fontSize: 15 }} />} label={`Chambre R101`} size="small" sx={{ bgcolor: tokens.color.cream }} />
               <Chip label="Valide jusqu’au 31/12/2026" size="small" sx={{ bgcolor: tokens.color.goldSoft, color: tokens.color.navyDeep, fontWeight: 600 }} />
             </Stack>
-            <Stack direction="row" spacing={1.5} sx={{ mt: 3 }}>
+<Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 3 }}>
               <Button
                 variant="contained"
                 color="secondary"

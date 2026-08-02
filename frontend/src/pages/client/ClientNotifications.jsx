@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { Grid, Card, Box, Typography, Stack, Chip } from '@mui/material';
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
+import SearchField from '../../components/common/SearchField.jsx';
 import { tokens } from '../../theme.js';
 import { clientNotifications } from '../../data/mockData.js';
+import { filterRecords } from '../../utils/searchUtils.js';
 
 const typeStyle = {
   succes: { bg: tokens.color.successSoft, fg: tokens.color.success, icon: <CheckCircleRoundedIcon sx={{ fontSize: 18 }} /> },
@@ -13,24 +16,34 @@ const typeStyle = {
 };
 
 export default function ClientNotifications() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const rows = filterRecords(clientNotifications, searchQuery, ['titre', 'detail', 'type', 'heure']);
   return (
     <Box>
       <Card sx={{ p: 3, mb: 2.5, bgcolor: tokens.color.navy, color: '#fff' }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <NotificationsRoundedIcon />
-          </Box>
-          <Box>
-            <Typography variant="h5">Notifications</Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-              Confirmations, paiements reçus, chambre prête et promotions personnalisées.
-            </Typography>
-          </Box>
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ flexWrap: 'wrap', gap: 1.5 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <NotificationsRoundedIcon />
+            </Box>
+            <Box>
+              <Typography variant="h5">Notifications</Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                Confirmations, paiements reçus, chambre prête et promotions personnalisées.
+              </Typography>
+            </Box>
+          </Stack>
+          <SearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Rechercher une notification…"
+            sx={{ minWidth: { sm: 240 } }}
+          />
         </Stack>
       </Card>
 
       <Grid container spacing={2}>
-        {clientNotifications.map((n) => {
+        {rows.map((n) => {
           const st = typeStyle[n.type] || typeStyle.info;
           return (
             <Grid item xs={12} md={6} key={n.id}>

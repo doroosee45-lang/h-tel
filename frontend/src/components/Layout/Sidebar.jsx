@@ -36,7 +36,7 @@ import { tokens } from '../../theme.js';
 // ---------------------------------------------------------------------------
 const roleNav = {
   'Super Admin': [
-    { section: 'Vue d’ensemble', items: [{ to: '/dashboard', label: 'Dashboard Global', icon: <DashboardRoundedIcon /> }] },
+    { section: 'Vue d’ensemble', items: [{ to: '/dashboard', label: 'Global', icon: <DashboardRoundedIcon /> }] },
     {
       section: 'Gestion',
       items: [

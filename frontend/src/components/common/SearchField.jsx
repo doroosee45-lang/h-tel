@@ -6,30 +6,38 @@ import { tokens } from '../../theme.js';
 // ---------------------------------------------------------------------------
 // Champ de recherche réutilisable — filtrage temps réel par module.
 // value/onChange contrôlés depuis la page parente.
+// Accessible : role searchbox, aria-label… et responsive mobile (pleine largeur).
 // ---------------------------------------------------------------------------
 export default function SearchField({
   value,
   onChange,
   placeholder = 'Rechercher…',
+  ariaLabel = placeholder,
   fullWidth = false,
   size = 'small',
-  sx = {},
-  label
+  autoFocus = false,
+  sx = {}
 }) {
   return (
     <TextField
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      label={label}
+      aria-label={ariaLabel}
+      role="searchbox"
+      inputProps={{ 'aria-label': ariaLabel, 'aria-controls': value ? undefined : undefined }}
       size={size}
       fullWidth={fullWidth}
+      autoFocus={autoFocus}
       sx={{
         bgcolor: '#fff',
         '& .MuiOutlinedInput-root': {
           borderRadius: '10px',
           border: `1px solid ${tokens.color.line}`,
           '& fieldset': { border: 'none' }
+        },
+        '& .MuiInputBase-input': {
+          minWidth: 0 // Évite le débordement du placeholder sur mobile
         },
         ...sx
       }}

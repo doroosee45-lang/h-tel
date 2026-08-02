@@ -48,11 +48,11 @@ export default function ClientInvoices() {
         </Stack>
       </Card>
 
-      <Card sx={{ overflow: 'hidden' }}>
+      <Card sx={{ overflowX: 'auto' }}>
         <Box sx={{ p: 3, pb: 1.5 }}>
           <Typography variant="h6">Historique des factures</Typography>
         </Box>
-        <Table>
+        <Table sx={{ minWidth: 720 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: tokens.color.cream }}>
               {['N° Facture', 'Période', 'Date', 'Total', 'Statut', 'Méthode', 'Actions'].map((h) => (
@@ -107,7 +107,7 @@ export default function ClientInvoices() {
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Total</Typography>
             <Typography variant="subtitle1" sx={{ fontFamily: tokens.font.mono, fontWeight: 700, color: tokens.color.navy }}>{currency(openInvoice?.total || 0)}</Typography>
           </Stack>
-          <Stack direction="row" spacing={1.5}>
+<Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
             <Button variant="outlined" fullWidth startIcon={<DownloadRoundedIcon />} onClick={() => showToast('PDF téléchargé.', 'success')}>PDF</Button>
             <Button variant="outlined" fullWidth startIcon={<PrintRoundedIcon />} onClick={() => showToast('Impression lancée.', 'info')}>Imprimer</Button>
             <Button variant="contained" color="secondary" fullWidth onClick={() => setOpenInvoice(null)}>Fermer</Button>

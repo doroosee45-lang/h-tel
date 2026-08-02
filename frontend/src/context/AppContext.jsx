@@ -18,7 +18,7 @@ export const AppContext = createContext(null);
  * - Expose des helpers (addAuditLog, addNotification) pour tracer les actions
  */
 export function AppProvider({ children }) {
-  const [userRole, setUserRole] = useState(() => localStorage.getItem('sh_role') || 'Super Admin');
+  const [userRole, setUserRole] = useState(() => localStorage.getItem('sh_role') || null);
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('sh_user') || 'null');
@@ -26,6 +26,7 @@ export function AppProvider({ children }) {
       return null;
     }
   });
+  const isAuthenticated = !!userRole && !!currentUser;
 
   const [cartItems, setCartItems] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -70,12 +71,7 @@ export function AppProvider({ children }) {
     setSelectedRoom(room);
   };
 
-  const switchRole = (role) => {
-    setUserRole(role);
-    localStorage.setItem('sh_role', role);
-  };
-
-  const login = (role, user) => {
+const login = (role, user) => {
     setUserRole(role);
     setCurrentUser(user);
     localStorage.setItem('sh_role', role);
@@ -83,7 +79,7 @@ export function AppProvider({ children }) {
   };
 
   const logout = () => {
-    setUserRole('Super Admin');
+    setUserRole(null);
     setCurrentUser(null);
     localStorage.removeItem('sh_role');
     localStorage.removeItem('sh_user');
@@ -117,15 +113,14 @@ export function AppProvider({ children }) {
     ]);
   };
 
-  const value = {
+const value = {
     // Auth & rôles
     userRole,
     setUserRole,
-    switchRole,
     login,
     logout,
+    isAuthenticated,
     currentUser,
-    roles: ['Super Admin', 'Manager', 'Client'],
 
     // Panier
     cartItems,

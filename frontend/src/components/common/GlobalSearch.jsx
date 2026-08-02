@@ -703,7 +703,7 @@ export default function GlobalSearch({ open, onClose }) {
                         '&:hover': { bgcolor: tokens.color.goldSoft }
                       }}
                     >
-                      <ListItemIcon sx={{ minWidth: 36, color: tokens.color.navy }}>
+<ListItemIcon sx={{ minWidth: 36, color: tokens.color.navy }}>
                         {group.icon}
                       </ListItemIcon>
                       <ListItemText
@@ -713,12 +713,12 @@ export default function GlobalSearch({ open, onClose }) {
                           </Typography>
                         }
                         secondary={
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 260 }}>
+                          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={0.5} alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ maxWidth: { xs: 180, sm: 260 }, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               <Highlight text={rec.sousTitre} query={query} />
                             </Typography>
                             {rec.extra && (
-                              <Chip label={<Highlight text={rec.extra} query={query} />} size="small" sx={{ fontSize: 10.5, height: 20, bgcolor: tokens.color.cream }} />
+                              <Chip label={<Highlight text={rec.extra} query={query} />} size="small" sx={{ fontSize: 10.5, height: 20, bgcolor: tokens.color.cream, flexShrink: 0 }} />
                             )}
                           </Stack>
                         }

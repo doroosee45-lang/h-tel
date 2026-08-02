@@ -92,7 +92,7 @@ export default function UsersManagement() {
         </Grid>
       </Grid>
 
-      <Card sx={{ overflow: 'hidden' }}>
+      <Card sx={{ overflowX: 'auto' }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 3, pb: 1.5, flexWrap: 'wrap', gap: 1.5 }}>
           <Box>
             <Typography variant="h6">Liste des utilisateurs</Typography>
@@ -110,7 +110,7 @@ export default function UsersManagement() {
             </Button>
           </Stack>
         </Stack>
-        <Table>
+        <Table sx={{ minWidth: 640 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: tokens.color.cream }}>
               {['Utilisateur', 'Rôle', 'Dernière connexion', 'Statut', 'Activer / Désactiver'].map((h) => (

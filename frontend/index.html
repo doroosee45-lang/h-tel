@@ -12,8 +12,10 @@
     />
     <style>
       * { box-sizing: border-box; }
-      html, body, #root { height: 100%; margin: 0; }
+      html, body, #root { height: 100%; margin: 0; max-width: 100%; }
+      html, body { overflow-x: hidden; }
       body { background: #F6F3EC; }
+      img, svg, video, canvas { max-width: 100%; height: auto; }
       ::-webkit-scrollbar { width: 8px; height: 8px; }
       ::-webkit-scrollbar-thumb { background: #C9BFA8; border-radius: 8px; }
     </style>

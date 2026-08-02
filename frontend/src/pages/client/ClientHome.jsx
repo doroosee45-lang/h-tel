@@ -167,7 +167,7 @@ export default function ClientHome() {
               <Box component="img" src={item.image} sx={{ width: 76, height: 76, borderRadius: '12px', objectFit: 'cover', flexShrink: 0 }} />
               <Box sx={{ flex: 1 }}>
                 <Typography sx={{ fontWeight: 600, fontSize: 14 }}>{item.nom}</Typography>
-                <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>{item.description}</Typography>
+<Typography variant="caption" color="text.secondary" sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: { xs: 140, sm: 'none' } }}>{item.description}</Typography>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 0.8 }}>
                   <Typography sx={{ fontFamily: tokens.font.mono, fontWeight: 700, color: tokens.color.navy }}>{currency(item.prix)}</Typography>
                   <Button size="small" variant="contained" sx={{ boxShadow: 'none' }} onClick={() => navigate('/client/restaurant')}>

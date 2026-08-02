@@ -160,7 +160,7 @@ export default function Payments() {
         </Grid>
 
         <Grid item xs={12} lg={8}>
-          <Card sx={{ overflow: 'hidden' }}>
+          <Card sx={{ overflowX: 'auto' }}>
             <Box sx={{ p: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
               <Box>
                 <Typography variant="h6">{isClient ? 'Mes paiements' : 'Toutes les transactions'}</Typography>
@@ -173,7 +173,7 @@ export default function Payments() {
                 sx={{ minWidth: { sm: 260 } }}
               />
             </Box>
-            <Table>
+            <Table sx={{ minWidth: 680 }}>
               <TableHead>
                 <TableRow sx={{ bgcolor: tokens.color.cream }}>
                   {['Référence', 'Type', 'Méthode', 'Montant', 'Date', 'Statut'].map((h) => (

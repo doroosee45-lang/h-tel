@@ -252,12 +252,12 @@ export default function ClientHome() {
       ================================================================ */}
       <Reveal direction="none">
         <Box
-  sx={{
-    position: 'relative', borderRadius: { xs: '20px', sm: '26px', md: '30px' }, overflow: 'hidden',
-    minHeight: { xs: 440, sm: 500, md: 560 }, mb: { xs: 5, md: 7 },
-    boxShadow: tokens.shadow.lg, isolation: 'isolate'
-  }}
->
+          sx={{
+            position: 'relative', borderRadius: { xs: '20px', sm: '26px', md: '30px' }, overflow: 'hidden',
+            minHeight: { xs: 440, sm: 500, md: 560 }, mb: { xs: 5, md: 7 },
+            boxShadow: tokens.shadow.lg, isolation: 'isolate'
+          }}
+        >
           {heroImages.map((slide, i) => (
             <Box
               key={slide.image}
@@ -886,9 +886,24 @@ export default function ClientHome() {
       ================================================================ */}
       <Box
         sx={{
-          mb: { xs: 6, md: 8 }, py: { xs: 3.5, sm: 4.5, md: 5.5 }, px: { xs: 1.5, sm: 3 },
-          bgcolor: '#FBF8F1', border: `1px solid ${tokens.color.line}`,
-          borderRadius: { xs: 20, md: 26 }, overflow: 'hidden'
+          mb: { xs: 6, md: 8 },
+          py: { xs: 3.5, sm: 4.5, md: 5.5 },
+          px: { xs: 1.5, sm: 3 },
+
+          bgcolor: '#FBF8F1',
+          border: `1px solid ${tokens.color.line}`,
+
+          borderRadius: '8px',
+
+          overflow: 'hidden',
+
+          boxShadow: '0 6px 24px rgba(0,0,0,0.05)',
+
+          transition: 'all 0.3s ease',
+
+          '&:hover': {
+            boxShadow: '0 12px 30px rgba(0,0,0,0.08)',
+          },
         }}
       >
         <Reveal>
@@ -921,14 +936,16 @@ export default function ClientHome() {
       {/* ================================================================
           TÉMOIGNAGES — carrousel premium refondu (1/2/3 par vue)
       ================================================================ */}
-      <Box sx={{ mb: { xs: 6, md: 8 } }}>
-        <Reveal>
-          <SectionHeader
-            kicker="Témoignages"
-            title="Ils ont séjourné chez nous"
-            subtitle="La satisfaction de nos hôtes est notre plus belle récompense."
-          />
-        </Reveal>
+      <Box
+        sx={{
+          overflow: 'hidden',
+          borderRadius: '8px',
+          backgroundColor: '#fff',
+          border: `1px solid ${tokens.color.line}`,
+          boxShadow: '0 6px 24px rgba(0,0,0,0.06)',
+        }}
+      >
+
 
         <Box sx={{ position: 'relative', maxWidth: 1080, mx: 'auto', px: { xs: 0.5, sm: 4 } }}>
           <Box sx={{ overflow: 'hidden', borderRadius: { xs: 18, md: 22 } }}>
@@ -946,11 +963,21 @@ export default function ClientHome() {
                 >
                   <Card
                     sx={{
-                      height: '100%', p: { xs: 2.4, sm: 3 }, borderRadius: '18px',
-                      bgcolor: '#fff', border: `1px solid ${tokens.color.line}`,
-                      display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden',
-                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                      '&:hover': { transform: 'translateY(-4px)', boxShadow: tokens.shadow.md }
+                      height: '100%',
+                      p: 3,
+                      borderRadius: '12px',
+                      bgcolor: '#fff',
+                      border: `1px solid ${tokens.color.line}`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      transition: 'all .3s ease',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+
+                      '&:hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: '0 12px 35px rgba(0,0,0,0.12)',
+                      },
                     }}
                   >
                     {/* Guillemet décoratif */}
@@ -1093,476 +1120,476 @@ export default function ClientHome() {
       {/* ================================================================
           CTA FINAL — Offre bienvenue 10 %
       ================================================================ */}
-     <Reveal>
-  <Box
-    sx={{
-      position: 'relative',
-      overflow: 'hidden',
+      <Reveal>
+        <Box
+          sx={{
+            position: 'relative',
+            overflow: 'hidden',
 
-      width: '100%',
-      maxWidth: '100%',
+            width: '100%',
+            maxWidth: '100%',
 
-      mb: { xs: 6, md: 8 },
+            mb: { xs: 6, md: 8 },
 
-      borderRadius: '20px',
+            borderRadius: '20px',
 
-      p: {
-        xs: 4,
-        sm: 6,
-        md: 8
-      },
+            p: {
+              xs: 4,
+              sm: 6,
+              md: 8
+            },
 
-      textAlign: 'center',
+            textAlign: 'center',
 
-      boxShadow: '0 15px 40px rgba(0,0,0,0.15)',
+            boxShadow: '0 15px 40px rgba(0,0,0,0.15)',
 
-      background: `linear-gradient(
+            background: `linear-gradient(
         120deg,
         ${tokens.color.navyDeep} 0%,
         ${tokens.color.navy} 55%,
         ${tokens.color.navySoft} 100%
       )`,
-    }}
-  >
-    {/* Image de fond */}
-    <Box
-      component="img"
-      src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=1200&q=70"
-      loading="lazy"
-      alt="Hôtel Fleuve"
-      sx={{
-        position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-        opacity: 0.15,
-        borderRadius: 'inherit',
-      }}
-    />
-
-    {/* Overlay lumineux */}
-    <Box
-      sx={{
-        position: 'absolute',
-        inset: 0,
-        background:
-          'radial-gradient(circle at 50% 120%, rgba(201,162,75,0.30) 0%, transparent 60%)',
-      }}
-    />
-
-    {/* Contenu */}
-    <Box
-      sx={{
-        position: 'relative',
-        zIndex: 2,
-        maxWidth: '900px',
-        mx: 'auto',
-      }}
-    >
-      {/* Badge */}
-      <Box
-        sx={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 1,
-
-          bgcolor: 'rgba(201,162,75,0.16)',
-          border: `1px solid ${tokens.color.gold}`,
-
-          color: tokens.color.goldSoft,
-
-          borderRadius: '12px',
-
-          px: 2.5,
-          py: 1,
-
-          mb: 3,
-        }}
-      >
-        <StarRoundedIcon sx={{ fontSize: 18 }} />
-
-        <Typography
-          sx={{
-            fontSize: { xs: 11, sm: 13 },
-            fontWeight: 600,
-            fontFamily: tokens.font.mono,
-            letterSpacing: '0.08em',
-            textAlign: 'center',
           }}
         >
-          OFFRE BIENVENUE — 10% DE RÉDUCTION SUR VOTRE PREMIER SÉJOUR
-        </Typography>
-      </Box>
+          {/* Image de fond */}
+          <Box
+            component="img"
+            src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=1200&q=70"
+            loading="lazy"
+            alt="Hôtel Fleuve"
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              opacity: 0.15,
+              borderRadius: 'inherit',
+            }}
+          />
 
-      {/* Titre */}
-      <Typography
-        sx={{
-          fontFamily: tokens.font.display,
-          color: '#FFFFFF',
+          {/* Overlay lumineux */}
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'radial-gradient(circle at 50% 120%, rgba(201,162,75,0.30) 0%, transparent 60%)',
+            }}
+          />
 
-          fontSize: {
-            xs: 28,
-            sm: 38,
-            md: 48,
-          },
+          {/* Contenu */}
+          <Box
+            sx={{
+              position: 'relative',
+              zIndex: 2,
+              maxWidth: '900px',
+              mx: 'auto',
+            }}
+          >
+            {/* Badge */}
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1,
 
-          fontWeight: 700,
-          lineHeight: 1.15,
+                bgcolor: 'rgba(201,162,75,0.16)',
+                border: `1px solid ${tokens.color.gold}`,
 
-          mb: 2,
+                color: tokens.color.goldSoft,
 
-          textShadow: '0 2px 20px rgba(7,26,51,0.50)',
-        }}
-      >
-        Prêt à vivre l'expérience Hôtel Fleuve ?
-      </Typography>
+                borderRadius: '12px',
 
-      {/* Description */}
-      <Typography
-        sx={{
-          color: 'rgba(255,255,255,0.85)',
+                px: 2.5,
+                py: 1,
 
-          fontSize: {
-            xs: 14,
-            md: 16,
-          },
+                mb: 3,
+              }}
+            >
+              <StarRoundedIcon sx={{ fontSize: 18 }} />
 
-          lineHeight: 1.8,
+              <Typography
+                sx={{
+                  fontSize: { xs: 11, sm: 13 },
+                  fontWeight: 600,
+                  fontFamily: tokens.font.mono,
+                  letterSpacing: '0.08em',
+                  textAlign: 'center',
+                }}
+              >
+                OFFRE BIENVENUE — 10% DE RÉDUCTION SUR VOTRE PREMIER SÉJOUR
+              </Typography>
+            </Box>
 
-          maxWidth: '650px',
-          mx: 'auto',
+            {/* Titre */}
+            <Typography
+              sx={{
+                fontFamily: tokens.font.display,
+                color: '#FFFFFF',
 
-          mb: 4,
-        }}
-      >
-        Réservez dès maintenant et profitez de nos meilleurs tarifs,
-        d'un accueil personnalisé et d'une annulation gratuite
-        jusqu'à 48 heures avant votre arrivée.
-      </Typography>
+                fontSize: {
+                  xs: 28,
+                  sm: 38,
+                  md: 48,
+                },
 
-      {/* Boutons */}
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        justifyContent="center"
-        alignItems="center"
-      >
-        <Button
-          variant="contained"
-          color="secondary"
-          size="large"
-          startIcon={<EventAvailableRoundedIcon />}
-          onClick={() => navigate('/client/chambres')}
-          sx={{
-            minWidth: 240,
+                fontWeight: 700,
+                lineHeight: 1.15,
 
-            px: 4,
-            py: 1.5,
+                mb: 2,
 
-            borderRadius: '12px',
+                textShadow: '0 2px 20px rgba(7,26,51,0.50)',
+              }}
+            >
+              Prêt à vivre l'expérience Hôtel Fleuve ?
+            </Typography>
 
-            fontWeight: 700,
+            {/* Description */}
+            <Typography
+              sx={{
+                color: 'rgba(255,255,255,0.85)',
 
-            boxShadow: tokens.shadow.lg,
+                fontSize: {
+                  xs: 14,
+                  md: 16,
+                },
 
-            transition: 'all .3s ease',
+                lineHeight: 1.8,
 
-            '&:hover': {
-              transform: 'translateY(-3px)',
-            },
-          }}
-        >
-          Réserver une chambre
-        </Button>
+                maxWidth: '650px',
+                mx: 'auto',
 
-        <Button
-          variant="outlined"
-          size="large"
-          onClick={() => navigate('/client/fidelite')}
-          sx={{
-            minWidth: 240,
+                mb: 4,
+              }}
+            >
+              Réservez dès maintenant et profitez de nos meilleurs tarifs,
+              d'un accueil personnalisé et d'une annulation gratuite
+              jusqu'à 48 heures avant votre arrivée.
+            </Typography>
 
-            px: 4,
-            py: 1.5,
+            {/* Boutons */}
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              justifyContent="center"
+              alignItems="center"
+            >
+              <Button
+                variant="contained"
+                color="secondary"
+                size="large"
+                startIcon={<EventAvailableRoundedIcon />}
+                onClick={() => navigate('/client/chambres')}
+                sx={{
+                  minWidth: 240,
 
-            borderRadius: '12px',
+                  px: 4,
+                  py: 1.5,
 
-            color: '#FFFFFF',
-            borderColor: 'rgba(255,255,255,0.5)',
+                  borderRadius: '12px',
 
-            fontWeight: 600,
+                  fontWeight: 700,
 
-            transition: 'all .3s ease',
+                  boxShadow: tokens.shadow.lg,
 
-            '&:hover': {
-              borderColor: '#FFFFFF',
-              bgcolor: 'rgba(255,255,255,0.10)',
-              transform: 'translateY(-3px)',
-            },
-          }}
-        >
-          Voir le programme fidélité
-        </Button>
-      </Stack>
-    </Box>
-  </Box>
-</Reveal>
+                  transition: 'all .3s ease',
+
+                  '&:hover': {
+                    transform: 'translateY(-3px)',
+                  },
+                }}
+              >
+                Réserver une chambre
+              </Button>
+
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={() => navigate('/client/fidelite')}
+                sx={{
+                  minWidth: 240,
+
+                  px: 4,
+                  py: 1.5,
+
+                  borderRadius: '12px',
+
+                  color: '#FFFFFF',
+                  borderColor: 'rgba(255,255,255,0.5)',
+
+                  fontWeight: 600,
+
+                  transition: 'all .3s ease',
+
+                  '&:hover': {
+                    borderColor: '#FFFFFF',
+                    bgcolor: 'rgba(255,255,255,0.10)',
+                    transform: 'translateY(-3px)',
+                  },
+                }}
+              >
+                Voir le programme fidélité
+              </Button>
+            </Stack>
+          </Box>
+        </Box>
+      </Reveal>
 
       {/* ================================================================
           CONTACT
       ================================================================ */}
-     <Reveal>
-  <Card
-    sx={{
-      p: { xs: 3, sm: 4, md: 5 },
-      mb: 4,
-      borderRadius: '20px',
-      border: `1px solid ${tokens.color.line}`,
-      boxShadow: '0 8px 30px rgba(0,0,0,0.06)',
-      overflow: 'hidden',
-      width: '100%',
-      maxWidth: '100%',
-      bgcolor: 'background.paper',
-    }}
-  >
-    <Grid container spacing={4} alignItems="flex-start">
-      {/* Informations de contact */}
-      <Grid item xs={12} md={5}>
-        <Typography
+      <Reveal>
+        <Card
           sx={{
-            fontFamily: tokens.font.mono,
-            fontSize: 12,
-            letterSpacing: '0.24em',
-            textTransform: 'uppercase',
-            color: tokens.color.gold,
-            fontWeight: 700,
-            mb: 1,
+            p: { xs: 3, sm: 4, md: 5 },
+            mb: 4,
+            borderRadius: '20px',
+            border: `1px solid ${tokens.color.line}`,
+            boxShadow: '0 8px 30px rgba(0,0,0,0.06)',
+            overflow: 'hidden',
+            width: '100%',
+            maxWidth: '100%',
+            bgcolor: 'background.paper',
           }}
         >
-          Contact
-        </Typography>
-
-        <Typography
-          variant="h4"
-          sx={{
-            fontSize: { xs: 28, md: 34 },
-            fontWeight: 700,
-            color: tokens.color.navyDeep,
-            mb: 1.5,
-          }}
-        >
-          Restons en contact
-        </Typography>
-
-        <Typography
-          variant="body1"
-          color="text.secondary"
-          sx={{
-            mb: 3,
-            lineHeight: 1.8,
-          }}
-        >
-          Une question, une demande spéciale ou une réservation ?
-          Notre équipe est disponible 24h/24 et 7j/7 pour vous assister.
-        </Typography>
-
-        <Stack spacing={2.5}>
-          {/* Téléphone */}
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Box
-              sx={{
-                width: 50,
-                height: 50,
-                borderRadius: '12px',
-                bgcolor: tokens.color.goldSoft,
-                color: tokens.color.navyDeep,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <PhoneRoundedIcon />
-            </Box>
-
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Téléphone
-              </Typography>
-              <Typography fontWeight={600}>
-                {hotelContact.telephone}
-              </Typography>
-            </Box>
-          </Stack>
-
-          {/* Email */}
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Box
-              sx={{
-                width: 50,
-                height: 50,
-                borderRadius: '12px',
-                bgcolor: tokens.color.goldSoft,
-                color: tokens.color.navyDeep,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <EmailRoundedIcon />
-            </Box>
-
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Email
-              </Typography>
-              <Typography fontWeight={600}>
-                {hotelContact.email}
-              </Typography>
-            </Box>
-          </Stack>
-
-          {/* Adresse */}
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Box
-              sx={{
-                width: 50,
-                height: 50,
-                borderRadius: '12px',
-                bgcolor: tokens.color.goldSoft,
-                color: tokens.color.navyDeep,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-            >
-              <LocationOnRoundedIcon />
-            </Box>
-
-            <Box>
-              <Typography variant="caption" color="text.secondary">
-                Adresse
-              </Typography>
-              <Typography fontWeight={600}>
-                {hotelContact.adresse}
-              </Typography>
-            </Box>
-          </Stack>
-
-          {/* Réseaux sociaux */}
-          <Stack direction="row" spacing={1.5} flexWrap="wrap">
-            {hotelContact.reseaux.map((r) => (
-              <IconButton
-                key={r.nom}
-                component="a"
-                href={r.url}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={r.nom}
+          <Grid container spacing={4} alignItems="flex-start">
+            {/* Informations de contact */}
+            <Grid item xs={12} md={5}>
+              <Typography
                 sx={{
-                  width: 46,
-                  height: 46,
-                  borderRadius: '12px',
-                  bgcolor: tokens.color.cream,
-                  border: `1px solid ${tokens.color.line}`,
-                  transition: 'all .3s ease',
-                  '&:hover': {
-                    bgcolor: tokens.color.goldSoft,
-                    borderColor: tokens.color.gold,
-                    transform: 'translateY(-2px)',
-                  },
+                  fontFamily: tokens.font.mono,
+                  fontSize: 12,
+                  letterSpacing: '0.24em',
+                  textTransform: 'uppercase',
+                  color: tokens.color.gold,
+                  fontWeight: 700,
+                  mb: 1,
                 }}
               >
-                {socialIcons[r.nom] || <FacebookRoundedIcon />}
-              </IconButton>
-            ))}
-          </Stack>
-        </Stack>
-      </Grid>
+                Contact
+              </Typography>
 
-      {/* Formulaire */}
-      <Grid item xs={12} md={7}>
-        <Stack spacing={2.5}>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-          >
-            <TextField
-              label="Votre nom"
-              fullWidth
-              size="medium"
-            />
+              <Typography
+                variant="h4"
+                sx={{
+                  fontSize: { xs: 28, md: 34 },
+                  fontWeight: 700,
+                  color: tokens.color.navyDeep,
+                  mb: 1.5,
+                }}
+              >
+                Restons en contact
+              </Typography>
 
-            <TextField
-              label="Email"
-              fullWidth
-              size="medium"
-            />
-          </Stack>
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{
+                  mb: 3,
+                  lineHeight: 1.8,
+                }}
+              >
+                Une question, une demande spéciale ou une réservation ?
+                Notre équipe est disponible 24h/24 et 7j/7 pour vous assister.
+              </Typography>
 
-          <TextField
-            label="Votre message"
-            multiline
-            rows={5}
-            fullWidth
-            value={contactMsg}
-            onChange={(e) => setContactMsg(e.target.value)}
-          />
+              <Stack spacing={2.5}>
+                {/* Téléphone */}
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: '12px',
+                      bgcolor: tokens.color.goldSoft,
+                      color: tokens.color.navyDeep,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <PhoneRoundedIcon />
+                  </Box>
 
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-          >
-            <Button
-              variant="contained"
-              color="secondary"
-              size="large"
-              sx={{
-                px: 4,
-                py: 1.3,
-                borderRadius: '12px',
-                boxShadow: 'none',
-              }}
-              onClick={() => {
-                if (!contactMsg.trim()) return;
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Téléphone
+                    </Typography>
+                    <Typography fontWeight={600}>
+                      {hotelContact.telephone}
+                    </Typography>
+                  </Box>
+                </Stack>
 
-                setSnackbar({
-                  open: true,
-                  message:
-                    'Message envoyé à la réception. Nous vous répondrons rapidement.',
-                  severity: 'success',
-                });
+                {/* Email */}
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: '12px',
+                      bgcolor: tokens.color.goldSoft,
+                      color: tokens.color.navyDeep,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <EmailRoundedIcon />
+                  </Box>
 
-                setContactMsg('');
-              }}
-            >
-              Envoyer le message
-            </Button>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Email
+                    </Typography>
+                    <Typography fontWeight={600}>
+                      {hotelContact.email}
+                    </Typography>
+                  </Box>
+                </Stack>
 
-            <Button
-              variant="outlined"
-              component="a"
-              href={hotelContact.mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-              startIcon={<LocationOnRoundedIcon />}
-              sx={{
-                borderRadius: '12px',
-                px: 3,
-              }}
-            >
-              Ouvrir dans Google Maps
-            </Button>
-          </Stack>
-        </Stack>
-      </Grid>
-    </Grid>
-  </Card>
-</Reveal>
+                {/* Adresse */}
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: '12px',
+                      bgcolor: tokens.color.goldSoft,
+                      color: tokens.color.navyDeep,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <LocationOnRoundedIcon />
+                  </Box>
+
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Adresse
+                    </Typography>
+                    <Typography fontWeight={600}>
+                      {hotelContact.adresse}
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                {/* Réseaux sociaux */}
+                <Stack direction="row" spacing={1.5} flexWrap="wrap">
+                  {hotelContact.reseaux.map((r) => (
+                    <IconButton
+                      key={r.nom}
+                      component="a"
+                      href={r.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={r.nom}
+                      sx={{
+                        width: 46,
+                        height: 46,
+                        borderRadius: '12px',
+                        bgcolor: tokens.color.cream,
+                        border: `1px solid ${tokens.color.line}`,
+                        transition: 'all .3s ease',
+                        '&:hover': {
+                          bgcolor: tokens.color.goldSoft,
+                          borderColor: tokens.color.gold,
+                          transform: 'translateY(-2px)',
+                        },
+                      }}
+                    >
+                      {socialIcons[r.nom] || <FacebookRoundedIcon />}
+                    </IconButton>
+                  ))}
+                </Stack>
+              </Stack>
+            </Grid>
+
+            {/* Formulaire */}
+            <Grid item xs={12} md={7}>
+              <Stack spacing={2.5}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                >
+                  <TextField
+                    label="Votre nom"
+                    fullWidth
+                    size="medium"
+                  />
+
+                  <TextField
+                    label="Email"
+                    fullWidth
+                    size="medium"
+                  />
+                </Stack>
+
+                <TextField
+                  label="Votre message"
+                  multiline
+                  rows={5}
+                  fullWidth
+                  value={contactMsg}
+                  onChange={(e) => setContactMsg(e.target.value)}
+                />
+
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
+                >
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    size="large"
+                    sx={{
+                      px: 4,
+                      py: 1.3,
+                      borderRadius: '12px',
+                      boxShadow: 'none',
+                    }}
+                    onClick={() => {
+                      if (!contactMsg.trim()) return;
+
+                      setSnackbar({
+                        open: true,
+                        message:
+                          'Message envoyé à la réception. Nous vous répondrons rapidement.',
+                        severity: 'success',
+                      });
+
+                      setContactMsg('');
+                    }}
+                  >
+                    Envoyer le message
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    component="a"
+                    href={hotelContact.mapsUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    startIcon={<LocationOnRoundedIcon />}
+                    sx={{
+                      borderRadius: '12px',
+                      px: 3,
+                    }}
+                  >
+                    Ouvrir dans Google Maps
+                  </Button>
+                </Stack>
+              </Stack>
+            </Grid>
+          </Grid>
+        </Card>
+      </Reveal>
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}

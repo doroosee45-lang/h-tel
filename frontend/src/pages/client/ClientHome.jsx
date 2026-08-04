@@ -543,12 +543,16 @@ export default function ClientHome() {
           POURQUOI NOUS CHOISIR ? / L'EXCELLENCE — section claire & élégante
       ================================================================ */}
       <Box
-        sx={{
-          mb: { xs: 6, md: 8 },
-          background: 'linear-gradient(160deg, #FBF8F1 0%, #F3EEE1 100%)',
-          border: `1px solid ${tokens.color.line}`,
-          borderRadius: { xs: 8, md: 10 }, p: { xs: 3.5, sm: 5, md: 6.5 }, position: 'relative', overflow: 'hidden'
-        }}
+       sx={{
+  mb: { xs: 6, md: 8 },
+  background: 'linear-gradient(160deg, #FBF8F1 0%, #F3EEE1 100%)',
+  border: `1px solid ${tokens.color.line}`,
+  borderRadius: '12px',
+  p: { xs: 3.5, sm: 5, md: 6.5 },
+  position: 'relative',
+  overflow: 'hidden',
+  boxShadow: '0 8px 25px rgba(0,0,0,0.05)',
+}}
       >
 
         <Reveal>

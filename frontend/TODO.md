@@ -1,33 +1,41 @@
-# TODO — Audit & Corrections Responsive Mobile
+# TODO — Correction du style premium de la page d'accueil client (ClientHome)
 
 ## Objectif
-Éliminer tout débordement horizontal et garantir un affichage fluide sur 320 / 375 / 390 / 414 / 768 px (Android & iOS).
+Retrouver l'élégance du design original (fond crème, cartes blanches, accents or/navy)
+tout en conservant les nouvelles fonctionnalités (carrousels, compteurs animés, marquee,
+FAQ, CTA), avec une expérience optimale sur mobile, tablette et ordinateur.
 
 ## État : ✅ Terminé
 
-### Phase 1 — Fondations globales ✅
-- [x] `index.html` : overflow-x hidden global + images responsives
-- [x] `theme.js` : zones tactiles minimales (44px) boutons / icônes / onglets
-- [x] `AppLayout.jsx` : garde-fous overflow-x / max-width sur le contenu
+### Étape 1 — Animations plus discrètes ✅
+- [x] `src/components/client/Reveal.jsx` — offsets réduits (28px → 16px) et durée réduite (600ms → 450ms), easing doux
+- [x] `AnimatedCounter.jsx` — conservé (déclenchement au scroll, fluide)
 
-### Phase 2 — Layout & navigation ✅
-- [x] `Topbar.jsx` : comportement mobile (titre tronqué, rôle icône seule, sous-titre masqué sur xs)
-- [x] `GlobalSearch.jsx` : résultats responsives (wrap, maxWidth dynamique)
+### Étape 2 — Refonte du design de ClientHome.jsx ✅
+- [x] **Hero** : contraste renforcé (double overlay + text-shadow), badge or, ligne de confiance (note 4,6/5), flèches/dots accessibles, images premium
+- [x] **Chiffres clés** : cartes blanches élégantes avec liseré or, compteurs animés conservés, radius 18px
+- [x] **Nos services** : cartes blanches premium (image + texte), hover discret (translateY -4px), radius harmonisés
+- [x] **Pourquoi nous choisir ? / L'excellence** : section claire élégante (fond crème dégradé, cartes blanches, icônes or, liseré animé au hover)
+- [x] **Comment ça marche ?** : étapes harmonisées, connecteurs discrets en pointillés
+- [x] **Chambres populaires** : cartes blanches, bouton "Réserver" accessible, image responsive
+- [x] **Restaurant & Bar** : sections jumelles épurées, images adaptatives (64/72px)
+- [x] **Activités** : cartes avec image, tailles uniformisées, prix Inclus/FC
+- [x] **Galerie** : images arrondies 16px, hover zoom subtil (scale 1.05)
+- [x] **Ils nous font confiance / Nos partenaires** : marquee sur fond clair (#FBF8F1), cartes blanches fines, masque dégradé
+- [x] **Témoignages** : **refonte complète** (carrousel 1/2/3 par vue, guillemets décoratifs, avatar cerclé or, note, "Séjour vérifié", date, pagination corrigée)
+- [x] **Offre de bienvenue – 10 %** : CTA navy raffiné, double bouton, badge dégradé or
+- [x] **FAQ** : accordéons harmonisés (bordure gold au focus, fond goldSoft)
+- [x] **Contact** : carte blanche harmonisée, boutons adaptés mobile, icônes cerclées
 
-### Phase 3 — Pages & composants ✅
-- [x] `RoomDetailDialog.jsx` : infos chambre flexibles (column sur xs)
-- [x] `ClientHome.jsx` : descriptions tronquées + wrap
-- [x] `ClientInvoices.jsx` : boutons du dialog empilés sur xs
-- [x] `CheckInOut.jsx` : DialogActions wrap + chips flexibles + boutons column
-- [x] `ClientQR.jsx` : boutons & chips empilés / wrap
-- [x] `ClientLoyalty.jsx` : statistiques en colonne sur xs
-- [x] `HR.jsx` : Tabs scrollables
-- [x] `PlanningAgents.jsx` : en-tête wrap + titre responsive
-- [x] `Login.jsx` : encart démo aligné
-- [x] `OfflineBanner.jsx` : icône flexShrink + padding xs
-- [x] `ClientApp.jsx` : PhoneFrame 100% (max 300px) — déjà responsive
+### Étape 3 — Optimisation responsive ✅
+- [x] Aucun débordement horizontal (`overflowX: hidden` sur le wrapper + conteneurs masqués)
+- [x] Espacements adaptés (xs/sm/md) partout
+- [x] Images `objectFit: cover` correctement dimensionnées
+- [x] Cartes empilées proprement sur mobile (xs=12)
+- [x] Boutons 44px minimum au toucher (déjà dans le thème)
+- [x] Carrousels sans débordement (flexShrink: 0, width %, padding contrôlé)
 
-### Phase 4 — Vérifications
-- [ ] `npm run build` sans erreur
-- [ ] Test aux résolutions 320 / 375 / 390 / 414 / 768 px
+### Étape 4 — Vérifications ✅
+- [x] `npm run build` sans erreur (1944 modules transformés)
+- [x] Test responsive (xs/sm/md/lg breakpoints)
 

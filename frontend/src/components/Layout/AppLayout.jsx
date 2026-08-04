@@ -21,20 +21,47 @@ export default function AppLayout() {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', maxWidth: '100%', overflowX: 'hidden' }}>
+    // IMPORTANT : ne PAS mettre overflowX (ou overflow) ici.
+    // "overflow" différent de "visible" sur un ancêtre casse
+    // "position: sticky" sur la Sidebar (elle perdrait son
+    // comportement fixe et défilerait avec la page, laissant
+    // un grand vide sous elle une fois scrollée).
+    <Box sx={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
       <Sidebar
         isMobile={isMobile}
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
       />
-      <Box sx={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
         <OfflineBanner />
         <Topbar
           title={current.title || 'Smart Hotel 360°'}
           subtitle={current.subtitle}
           onToggleSidebar={() => setMobileOpen((prev) => !prev)}
         />
-        <Box sx={{ px: { xs: 1.5, sm: 3, lg: 4 }, py: 3.5, overflowX: 'hidden', maxWidth: '100%' }}>
+        {/* overflowX: hidden reste ici, sur le conteneur de contenu
+            uniquement — c'est le bon endroit pour bloquer un éventuel
+            débordement horizontal (ex: animations translateX du marquee),
+            sans affecter le "sticky" de la Sidebar. */}
+        <Box
+          sx={{
+            flex: 1,
+            px: { xs: 1.5, sm: 3, lg: 4 },
+            py: 3.5,
+            overflowX: 'hidden',
+            width: '100%',
+            maxWidth: '100%'
+          }}
+        >
           <Outlet />
         </Box>
       </Box>

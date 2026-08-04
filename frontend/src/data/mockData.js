@@ -575,6 +575,111 @@ export const hotelContact = {
   ]
 };
 
+// ---------------------------------------------------------------------------
+// Vitrine premium — chiffres clés, partenaires, FAQ, parcours, atouts
+// ---------------------------------------------------------------------------
+export const homeStats = [
+  { id: 1, label: 'Clients satisfaits', value: 12500, suffix: '+', icon: 'clients' },
+  { id: 2, label: 'Réservations / an', value: 4200, suffix: '+', icon: 'reservations' },
+  { id: 3, label: 'Chambres & Suites', value: 116, icon: 'chambres' },
+  { id: 4, label: 'Commandes servies / jour', value: 850, suffix: '+', icon: 'commandes' },
+  { id: 5, label: 'Partenaires locaux', value: 32, suffix: '+', icon: 'partenaires' },
+  { id: 6, label: 'Satisfaction client', value: 4.6, decimals: 1, suffix: '/5', icon: 'satisfaction' }
+];
+
+export const whyChooseUs = [
+  {
+    id: 1,
+    titre: 'Conciergerie 5 étoiles',
+    texte: 'Une équipe dédiée 24h/24 pour répondre à chaque besoin : transport, excursions, réservations.',
+    icon: 'concierge'
+  },
+  {
+    id: 2,
+    titre: 'Réservation instantanée',
+    texte: 'Confirmez votre chambre en quelques secondes depuis votre mobile, avec paiement sécurisé.',
+    icon: 'instant'
+  },
+  {
+    id: 3,
+    titre: 'Restaurant & Bar d’exception',
+    texte: 'Une gastronomie locale et internationale signée par nos chefs, servie en chambre ou en salle.',
+    icon: 'restaurant'
+  },
+  {
+    id: 4,
+    titre: 'Bien-être & détente',
+    texte: 'Spa, piscine extérieure et salle de sport ouverts aux résidents avec accès illimité.',
+    icon: 'spa'
+  },
+  {
+    id: 5,
+    titre: 'Programme de fidélité',
+    texte: 'Cumulez des points à chaque séjour et profitez de réductions exclusives jusqu’à -15 %.',
+    icon: 'loyalty'
+  },
+  {
+    id: 6,
+    titre: 'Sécurité & confort',
+    texte: 'Contrôle d’accès, chambres insonorisées, WiFi haut débit et un service en chambre irréprochable.',
+    icon: 'secure'
+  }
+];
+
+export const howItWorks = [
+  { id: 1, titre: 'Choisissez votre chambre', texte: 'Parcourez nos chambres et suites avec disponibilité en temps réel.', icon: 'choose' },
+  { id: 2, titre: 'Réservez en un clic', texte: 'Sélectionnez vos dates, confirmez et payez en toute sécurité.', icon: 'book' },
+  { id: 3, titre: 'Séjournez & profitez', texte: 'Accédez au restaurant, bar, spa et activités avec votre bracelet digital.', icon: 'stay' },
+  { id: 4, titre: 'Partagez votre expérience', texte: 'Notez votre séjour et gagnez des points de fidélité.', icon: 'share' }
+];
+
+export const partners = [
+  { id: 1, nom: 'Bralima', sigle: 'BR', logo: 'https://ui-avatars.com/api/?name=Bralima&background=0B2545&color=C9A24B&bold=true&font-size=0.4' },
+  { id: 2, nom: 'Congo Airways', sigle: 'CA', logo: 'https://ui-avatars.com/api/?name=Congo+Airways&background=16406E&color=FFFFFF&bold=true&font-size=0.32' },
+  { id: 3, nom: 'M-Pesa', sigle: 'MP', logo: 'https://ui-avatars.com/api/?name=M-Pesa&background=2E7D5B&color=FFFFFF&bold=true&font-size=0.4' },
+  { id: 4, nom: 'Rawbank', sigle: 'RB', logo: 'https://ui-avatars.com/api/?name=Rawbank&background=C9A24B&color=071A33&bold=true&font-size=0.4' },
+  { id: 5, nom: 'Orange Money', sigle: 'OM', logo: 'https://ui-avatars.com/api/?name=Orange+Money&background=2B6CB0&color=FFFFFF&bold=true&font-size=0.32' },
+  { id: 6, nom: 'Virunga Coffee', sigle: 'VC', logo: 'https://ui-avatars.com/api/?name=Virunga+Coffee&background=5B3A29&color=F1E7CC&bold=true&font-size=0.3' },
+  { id: 7, nom: 'EquityBCDC', sigle: 'EQ', logo: 'https://ui-avatars.com/api/?name=Equity&background=8E2323&color=FFFFFF&bold=true&font-size=0.4' },
+  { id: 8, nom: 'SNEL', sigle: 'SN', logo: 'https://ui-avatars.com/api/?name=SNEL&background=3A5BA0&color=FFFFFF&bold=true&font-size=0.4' }
+];
+
+export const faqItems = [
+  {
+    id: 1,
+    question: 'Comment réserver une chambre ?',
+    reponse: 'Rendez-vous sur la page « Chambres », choisissez vos dates et sélectionnez votre chambre. La confirmation est immédiate et le paiement sécurisé (M-Pesa, Orange Money, carte bancaire ou virement).'
+  },
+  {
+    id: 2,
+    question: 'Quelles sont les heures de check-in et de check-out ?',
+    reponse: 'Le check-in est possible dès 14h00 et le check-out jusqu’à 12h00. Un late check-out jusqu’à 15h00 est disponible en supplément, selon la disponibilité.'
+  },
+  {
+    id: 3,
+    question: 'Le petit-déjeuner est-il inclus ?',
+    reponse: 'Il est inclus dans nos formules Suite et Séjour Premium. Pour les autres catégories, il peut être ajouté à la réservation ou commandé en chambre dès 6h00.'
+  },
+  {
+    id: 4,
+    question: 'Comment fonctionne le programme de fidélité ?',
+    reponse: 'Chaque séjour vous fait gagner des points selon vos dépenses. Les niveaux Standard, Argent, Or et Platine offrent des réductions croissantes et des avantages exclusifs (surclassement, late check-out, concierge dédié).'
+  },
+  {
+    id: 5,
+    question: 'Puis-je annuler ou modifier ma réservation ?',
+    reponse: 'Oui, la modification et l’annulation sont gratuites jusqu’à 48h avant l’arrivée. Passé ce délai, des frais peuvent s’appliquer selon la formule choisie.'
+  }
+];
+
+export const heroImages = [
+  { image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=1600&q=80', tagline: 'L’excellence au bord du fleuve' },
+  { image: 'https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=1600&q=80', tagline: 'Un palace au cœur de Kinshasa' },
+  { image: 'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=1600&q=80', tagline: 'Détente, gastronomie et raffinement' },
+  { image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1600&q=80', tagline: 'Une table raffinée, un service irréprochable' },
+  { image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=1600&q=80', tagline: 'Votre havre de paix et de bien-être' }
+];
+
 export const clientOrdersData = [
   { id: 'CMD-221', type: 'Restaurant', items: [{ nom: 'Poulet Braisé', quantite: 1, prix: 18000 }, { nom: 'Salade César', quantite: 2, prix: 9000 }], total: 36000, statut: 'Livrée', date: '2026-07-29', methode: 'M-Pesa' },
   { id: 'CMD-223', type: 'Restaurant', items: [{ nom: 'Fondant au Chocolat', quantite: 2, prix: 8000 }], total: 16000, statut: 'En préparation', date: '2026-07-30', methode: 'Espèces' },

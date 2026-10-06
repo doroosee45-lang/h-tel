@@ -59,7 +59,8 @@ const finalizePayment = async (req, res, { invoiceId, orderId, amount, method, r
   if (payment) {
     if (
       payment.invoice?.toString() !== invoiceId?.toString() ||
-      payment.order?.toString() !== orderId?.toString()
+      payment.order?.toString() !== orderId?.toString() ||
+      Math.round(Number(payment.amount) * 100) !== Math.round(Number(amount) * 100)
     ) {
       paymentError(res, 409, "Cette référence de paiement est déjà associée à une autre transaction");
     }
@@ -83,7 +84,8 @@ const finalizePayment = async (req, res, { invoiceId, orderId, amount, method, r
       if (
         !payment ||
         payment.invoice?.toString() !== invoiceId?.toString() ||
-        payment.order?.toString() !== orderId?.toString()
+        payment.order?.toString() !== orderId?.toString() ||
+        Math.round(Number(payment.amount) * 100) !== Math.round(Number(amount) * 100)
       ) {
         paymentError(res, 409, "Cette référence de paiement est déjà associée à une autre transaction");
       }

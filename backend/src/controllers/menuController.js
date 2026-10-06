@@ -2,6 +2,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const MenuCategory = require("../models/MenuCategory");
 const MenuItem = require("../models/MenuItem");
 const Table = require("../models/Table");
+const escapeRegex = require("../utils/escapeRegex");
 const TableReservation = require("../models/TableReservation");
 const { generateQRCode } = require("../utils/qrGenerator");
 const { generateReference } = require("../utils/reference");
@@ -30,7 +31,7 @@ const getItems = asyncHandler(async (req, res) => {
   const filter = { type };
   if (category) filter.category = category;
   if (available !== undefined) filter.isAvailable = available === "true";
-  if (search) filter.name = new RegExp(search, "i");
+  if (search) filter.name = new RegExp(escapeRegex(search), "i");
 
   const items = await MenuItem.find(filter)
     .populate("category")

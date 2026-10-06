@@ -5,10 +5,11 @@ const {
 } = require("../controllers/authController");
 const { protect } = require("../middleware/auth");
 const { authorize } = require("../middleware/role");
+const authRateLimit = require("../middleware/authRateLimit");
 
 router.post("/register", protect, authorize("admin", "hr_manager"), register); // création réservée admin/RH
-router.post("/login", login);
-router.post("/2fa/verify-login", verifyLoginOtp);
+router.post("/login", authRateLimit, login);
+router.post("/2fa/verify-login", authRateLimit, verifyLoginOtp);
 router.post("/refresh", refreshToken);
 router.post("/logout", protect, logout);
 router.get("/me", protect, getMe);

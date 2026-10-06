@@ -5,9 +5,10 @@ const {
   getClientHistory, getClientInvoices,
 } = require("../controllers/clientAuthController");
 const { protectClient } = require("../middleware/clientAuth");
+const authRateLimit = require("../middleware/authRateLimit");
 
-router.post("/register", registerClient);
-router.post("/login", loginClient);
+router.post("/register", authRateLimit, registerClient);
+router.post("/login", authRateLimit, loginClient);
 router.post("/refresh", refreshClientToken);
 router.get("/me", protectClient, getClientMe);
 router.get("/me/history", protectClient, getClientHistory);

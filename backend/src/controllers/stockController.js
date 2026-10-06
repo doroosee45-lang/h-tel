@@ -1,5 +1,6 @@
 const asyncHandler = require("../middleware/asyncHandler");
 const StockItem = require("../models/StockItem");
+const escapeRegex = require("../utils/escapeRegex");
 const StockMovement = require("../models/StockMovement");
 const Supplier = require("../models/Supplier");
 const PurchaseOrder = require("../models/PurchaseOrder");
@@ -15,7 +16,7 @@ const getStockItems = asyncHandler(async (req, res) => {
   const { category, lowStock, search, page = 1, limit = 50 } = req.query;
   const filter = { isActive: true };
   if (category) filter.category = category;
-  if (search) filter.name = new RegExp(search, "i");
+  if (search) filter.name = new RegExp(escapeRegex(search), "i");
 
   let items = await StockItem.find(filter)
     .populate("supplier", "name phone")

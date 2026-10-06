@@ -1,5 +1,6 @@
 const asyncHandler = require("../middleware/asyncHandler");
 const AuditLog = require("../models/AuditLog");
+const escapeRegex = require("../utils/escapeRegex");
 
 // @route GET /api/audit-logs
 const getAuditLogs = asyncHandler(async (req, res) => {
@@ -7,7 +8,7 @@ const getAuditLogs = asyncHandler(async (req, res) => {
   const filter = {};
   if (user) filter.user = user;
   if (method) filter.method = method;
-  if (path) filter.path = new RegExp(path, "i");
+  if (path) filter.path = new RegExp(escapeRegex(path), "i");
   if (from || to) {
     filter.createdAt = {};
     if (from) filter.createdAt.$gte = new Date(from);

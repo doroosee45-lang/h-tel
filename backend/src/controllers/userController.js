@@ -1,5 +1,6 @@
 const asyncHandler = require("../middleware/asyncHandler");
 const User = require("../models/User");
+const escapeRegex = require("../utils/escapeRegex");
 
 // @route GET /api/users
 const getUsers = asyncHandler(async (req, res) => {
@@ -8,9 +9,9 @@ const getUsers = asyncHandler(async (req, res) => {
   if (role) filter.role = role;
   if (search) {
     filter.$or = [
-      { firstName: new RegExp(search, "i") },
-      { lastName: new RegExp(search, "i") },
-      { email: new RegExp(search, "i") },
+      { firstName: new RegExp(escapeRegex(search), "i") },
+      { lastName: new RegExp(escapeRegex(search), "i") },
+      { email: new RegExp(escapeRegex(search), "i") },
     ];
   }
 

@@ -1,14 +1,41 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Box, Card, Typography, Stack, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import SearchField from '../components/common/SearchField.jsx';
 import { tokens } from '../theme.js';
-import { auditLogs } from '../data/mockData.js';
 import { filterRecords } from '../utils/searchUtils.js';
+import { api, unwrap } from '../api/client.js';
+import { useAsyncData } from '../hooks/useAsyncData.js';
+import { EmptyCard, ErrorCard, LoadingCard } from '../components/common/StateViews.jsx';
+import { formatDate } from '../utils/format.js';
+
+async function loadAuditLogs() {
+  return unwrap(await api.get('/audit-logs')) || [];
+}
 
 export default function AuditLogs() {
   const [searchQuery, setSearchQuery] = useState('');
-  const rows = filterRecords(auditLogs, searchQuery, ['action', 'user', 'module', 'status', 'timestamp']);
+  const { data, loading, error, reload } = useAsyncData(loadAuditLogs, []);
+  const rows = useMemo(
+    () => filterRecords(
+      (data || []).map((log) => ({
+        ...log,
+        id: log._id,
+        timestamp: log.createdAt,
+        user: log.userEmail || log.user || '—',
+        action: `${log.method} ${log.path}`,
+        module: log.path.split('/').filter(Boolean)[1] || 'api',
+        status: log.statusCode >= 400 ? 'Échec' : 'Réussi'
+      })),
+      searchQuery,
+      ['action', 'user', 'module', 'status', 'timestamp']
+    ),
+    [data, searchQuery]
+  );
+
+  if (loading) return <LoadingCard message="Chargement du journal d’audit…" />;
+  if (error) return <ErrorCard error={error} onRetry={reload} />;
+
   return (
     <Box>
       <Card sx={{ p: 3, mb: 2.5 }}>
@@ -43,7 +70,7 @@ export default function AuditLogs() {
           <TableBody>
             {rows.map((log) => (
               <TableRow key={log.id}>
-                <TableCell>{log.timestamp}</TableCell>
+                <TableCell>{formatDate(log.timestamp)}</TableCell>
                 <TableCell>{log.user}</TableCell>
                 <TableCell>{log.action}</TableCell>
                 <TableCell>{log.module}</TableCell>
@@ -59,6 +86,7 @@ export default function AuditLogs() {
           </TableBody>
         </Table>
       </TableContainer>
+      {!rows.length ? <EmptyCard title="Aucune action" message="Aucune entrée ne correspond à la recherche." /> : null}
     </Box>
   );
 }

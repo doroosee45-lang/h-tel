@@ -7,7 +7,10 @@ const allowed = (process.env.CLIENT_URL || "")
 
 const corsOptions = {
   origin: (origin, cb) => {
-    if (!origin || allowed.length === 0 || allowed.includes("*") || allowed.includes(origin)) return cb(null, true);
+    if (!origin || allowed.includes(origin)) return cb(null, true);
+    if (process.env.NODE_ENV !== "production" && (allowed.length === 0 || allowed.includes("*"))) {
+      return cb(null, true);
+    }
     return cb(null, false);
   },
   credentials: true,

@@ -17,13 +17,18 @@ npm install
 npx expo start        # puis scanner le QR code avec Expo Go
 ```
 
-## Configuration de `api/client.js`
-`API_URL` (par défaut `http://192.168.1.10:5000`) doit être l'**IP locale de la machine qui
-héberge le backend** (pas `localhost` sur un téléphone). Surcharge possible sans modifier le code :
+## Configuration de l'API
+Pour un téléphone physique, copiez `.env.example` vers `.env` puis remplacez `EXPO_PUBLIC_API_URL`
+par l'**IP locale de la machine qui héberge le backend** (pas `localhost` sur un téléphone).
+Par défaut, l'émulateur Android utilise `10.0.2.2` et le simulateur iOS utilise `localhost`.
+Surcharge possible sans modifier le code :
 ```bash
 EXPO_PUBLIC_API_URL=http://192.168.1.20:5000 npx expo start
 ```
 `BASE_URL = API_URL + "/api"`. Le téléphone et le serveur doivent être sur le même réseau.
+
+Les jetons d'accès et de renouvellement sont conservés avec Expo SecureStore ; les anciennes
+installations migrent leurs jetons AsyncStorage lors de leur première lecture.
 
 ## Écrans
 Login, Register, Home (raccourcis + commandes en cours), Rooms (filtre par dates), RoomDetail

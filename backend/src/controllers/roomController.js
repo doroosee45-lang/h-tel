@@ -5,6 +5,7 @@ const Reservation = require("../models/Reservation");
 const { generateQRCode } = require("../utils/qrGenerator");
 const { notify } = require("../utils/notify");
 const { calculateStayPrice } = require("../utils/pricing");
+const { parseStayDates } = require("../utils/reservationValidation");
 
 // ---------- Catégories de chambres ----------
 
@@ -82,9 +83,10 @@ const getRoom = asyncHandler(async (req, res) => {
 // pour que le client voie le même montant que celui qui sera effectivement facturé.
 const getPriceQuote = asyncHandler(async (req, res) => {
   const { checkInDate, checkOutDate } = req.query;
-  if (!checkInDate || !checkOutDate) {
+  const dates = parseStayDates(checkInDate, checkOutDate);
+  if (!dates) {
     res.status(400);
-    throw new Error("checkInDate et checkOutDate sont requis");
+    throw new Error("Dates invalides: checkInDate et checkOutDate doivent définir un séjour valide");
   }
 
   const room = await Room.findById(req.params.id).populate("category");
@@ -93,23 +95,24 @@ const getPriceQuote = asyncHandler(async (req, res) => {
     throw new Error("Chambre non trouvée");
   }
 
-  const quote = calculateStayPrice(room.category, new Date(checkInDate), new Date(checkOutDate));
+  const quote = calculateStayPrice(room.category, dates.checkIn, dates.checkOut);
   res.json({ success: true, data: quote });
 });
 
 // @route GET /api/rooms/:id/availability?startDate=&endDate=
 const checkAvailability = asyncHandler(async (req, res) => {
   const { startDate, endDate } = req.query;
-  if (!startDate || !endDate) {
+  const dates = parseStayDates(startDate, endDate);
+  if (!dates) {
     res.status(400);
-    throw new Error("startDate et endDate sont requis");
+    throw new Error("Dates invalides: startDate et endDate doivent définir un séjour valide");
   }
 
   const conflict = await Reservation.findOne({
     room: req.params.id,
     status: { $in: ["pending", "confirmed", "checked_in"] },
-    checkInDate: { $lt: new Date(endDate) },
-    checkOutDate: { $gt: new Date(startDate) },
+    checkInDate: { $lt: dates.checkOut },
+    checkOutDate: { $gt: dates.checkIn },
   });
 
   res.json({ success: true, available: !conflict });

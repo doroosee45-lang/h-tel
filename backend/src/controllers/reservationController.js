@@ -1,4 +1,5 @@
 const asyncHandler = require("../middleware/asyncHandler");
+const mongoose = require("mongoose");
 const Client = require("../models/Client");
 const Reservation = require("../models/Reservation");
 const Room = require("../models/Room");
@@ -9,6 +10,9 @@ const { notify } = require("../utils/notify");
 const { issueKeyForReservation, revokeKeysForReservation } = require("../services/digitalKeyService");
 const { calculateStayPrice } = require("../utils/pricing");
 const { parseStayDates, parseManualDiscount } = require("../utils/reservationValidation");
+
+const isObjectId = (value) => typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
+const toObjectId = (value) => new mongoose.Types.ObjectId(value);
 
 // @route GET /api/reservations
 const getReservations = asyncHandler(async (req, res) => {
@@ -60,7 +64,9 @@ const createReservation = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Identifiant de chambre invalide");
   }
-  if (!(await Client.exists({ _id: client }))) {
+  const clientObjectId = toObjectId(client);
+  const roomObjectId = toObjectId(roomId);
+  if (!(await Client.exists({ _id: clientObjectId }))) {
     res.status(404);
     throw new Error("Client non trouvé");
   }
@@ -74,7 +80,7 @@ const createReservation = asyncHandler(async (req, res) => {
 
   // Vérifie le conflit de disponibilité
   const conflict = await Reservation.findOne({
-    room: roomId,
+    room: roomObjectId,
     status: { $in: ["pending", "confirmed", "checked_in"] },
     checkInDate: { $lt: checkOut },
     checkOutDate: { $gt: checkIn },
@@ -84,7 +90,7 @@ const createReservation = asyncHandler(async (req, res) => {
     throw new Error("Cette chambre n'est pas disponible sur cette période");
   }
 
-  const room = await Room.findById(roomId).populate("category");
+  const room = await Room.findById(roomObjectId).populate("category");
   if (!room) {
     res.status(404);
     throw new Error("Chambre non trouvée");
@@ -107,8 +113,8 @@ const createReservation = asyncHandler(async (req, res) => {
 
   const reservation = await Reservation.create({
     reference: generateReference("RES"),
-    client,
-    room: roomId,
+    client: clientObjectId,
+    room: roomObjectId,
     source: source || (req.client ? "mobile" : "reception"),
     checkInDate: checkIn,
     checkOutDate: checkOut,
@@ -124,7 +130,7 @@ const createReservation = asyncHandler(async (req, res) => {
   });
 
   if (room.status === "available") {
-    await Room.findByIdAndUpdate(roomId, { status: "reserved" });
+    await Room.findByIdAndUpdate(roomObjectId, { status: "reserved" });
   }
 
   await notify(
@@ -148,6 +154,7 @@ const updateReservation = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Identifiant de réservation invalide");
   }
+  const reservationId = toObjectId(req.params.id);
   const allowedFields = ["notes", "adults", "children"];
   const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
   const unexpectedFields = Object.keys(body).filter((field) => !allowedFields.includes(field));
@@ -180,7 +187,7 @@ const updateReservation = asyncHandler(async (req, res) => {
     throw new Error("Aucun champ modifiable fourni");
   }
 
-  const reservation = await Reservation.findByIdAndUpdate(req.params.id, updates, {
+  const reservation = await Reservation.findByIdAndUpdate(reservationId, updates, {
     new: true,
     runValidators: true,
   });

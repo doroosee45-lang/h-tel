@@ -2,9 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
-const csrfProtection = require("./middleware/csrfProtection");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 const auditLogger = require("./middleware/auditLogger");
 
@@ -57,8 +55,6 @@ app.post(
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(csrfProtection);
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(auditLogger); // Journalisation complète des actions d'écriture (§15 Sécurité)
 

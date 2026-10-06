@@ -1,4 +1,5 @@
 const asyncHandler = require("../middleware/asyncHandler");
+const mongoose = require("mongoose");
 const stripeGateway = require("../services/paymentGateways/stripeGateway");
 const paypalGateway = require("../services/paymentGateways/paypalGateway");
 const mobileMoneyGateway = require("../services/paymentGateways/mobileMoneyGateway");
@@ -9,6 +10,7 @@ const { notify } = require("../utils/notify");
 const { parseExactPaymentAmount } = require("../utils/paymentValidation");
 
 const isObjectId = (value) => typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
+const toObjectId = (value) => new mongoose.Types.ObjectId(value);
 
 const paymentError = (res, status, message) => {
   res.status(status);
@@ -23,8 +25,9 @@ const getPaymentTarget = async (req, res, { invoiceId, orderId }) => {
     paymentError(res, 400, "Identifiant de facture ou commande invalide");
   }
 
-  const invoice = invoiceId ? await Invoice.findById(invoiceId) : null;
-  const order = orderId ? await Order.findById(orderId) : null;
+  const targetId = toObjectId(invoiceId || orderId);
+  const invoice = invoiceId ? await Invoice.findById(targetId) : null;
+  const order = orderId ? await Order.findById(targetId) : null;
   const target = invoiceId ? invoice : order;
   if (!target) paymentError(res, 404, "Facture ou commande non trouvée");
   if (req.client && (!target.client || target.client.toString() !== req.client._id.toString())) {
@@ -109,10 +112,11 @@ const finalizePayment = async (req, res, { invoiceId, orderId, amount, method, r
   }
 
   if (invoiceId) {
-    const invoice = await Invoice.findById(invoiceId);
+    const invoiceObjectId = toObjectId(invoiceId);
+    const invoice = await Invoice.findById(invoiceObjectId);
     if (invoice) {
       const totalPaid = (
-        await Payment.find({ invoice: invoiceId, status: { $in: ["completed", "refunded"] } })
+        await Payment.find({ invoice: invoiceObjectId, status: { $in: ["completed", "refunded"] } })
       ).reduce((s, p) => s + p.amount, 0);
       invoice.status = totalPaid >= invoice.total ? "paid" : "partial";
       await invoice.save();
@@ -134,7 +138,11 @@ const finalizePayment = async (req, res, { invoiceId, orderId, amount, method, r
   }
 
   if (orderId) {
-    const order = await Order.findByIdAndUpdate(orderId, { isPaid: true, paymentMethod: method }, { new: true });
+    const order = await Order.findByIdAndUpdate(
+      toObjectId(orderId),
+      { isPaid: true, paymentMethod: method },
+      { new: true }
+    );
     if (order?.client && !wasExisting) {
       await notify(
         req,

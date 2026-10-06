@@ -16,7 +16,7 @@ export default function MenuOrderScreen({ type = 'menu', mode, navigation }) {
   const [notes, setNotes] = useState('');
   const [sending, setSending] = useState(false);
 
-  const stays = (reservations || []).filter((r) => r.status === 'checked_in');
+  const stays = (Array.isArray(reservations) ? reservations : []).filter((r) => r.status === 'checked_in');
   const stay = stays[0];
 
   const lines = useMemo(() => (items || []).filter((i) => cart[i._id]).map((i) => ({ item: i, quantity: cart[i._id] })), [items, cart]);

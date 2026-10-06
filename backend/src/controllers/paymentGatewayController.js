@@ -8,6 +8,8 @@ const Payment = require("../models/Payment");
 const { notify } = require("../utils/notify");
 const { parseExactPaymentAmount } = require("../utils/paymentValidation");
 
+const isObjectId = (value) => typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
+
 const paymentError = (res, status, message) => {
   res.status(status);
   throw new Error(message);
@@ -16,6 +18,9 @@ const paymentError = (res, status, message) => {
 const getPaymentTarget = async (req, res, { invoiceId, orderId }) => {
   if (Boolean(invoiceId) === Boolean(orderId)) {
     paymentError(res, 400, "Précisez exactement une facture ou une commande");
+  }
+  if ((invoiceId && !isObjectId(invoiceId)) || (orderId && !isObjectId(orderId))) {
+    paymentError(res, 400, "Identifiant de facture ou commande invalide");
   }
 
   const invoice = invoiceId ? await Invoice.findById(invoiceId) : null;
@@ -53,7 +58,17 @@ const validatePaymentAmount = (res, requestedAmount, amountDue) => {
 // Marque une facture/commande comme payée une fois le paiement confirmé par la passerelle
 // (webhook ou capture synchrone) — factorisé pour être appelé par les 3 passerelles.
 const finalizePayment = async (req, res, { invoiceId, orderId, amount, method, reference }) => {
-  if (!reference) paymentError(res, 400, "Référence de paiement absente");
+  if (
+    Boolean(invoiceId) === Boolean(orderId) ||
+    (invoiceId && !isObjectId(invoiceId)) ||
+    (orderId && !isObjectId(orderId)) ||
+    !["stripe", "paypal", "mobile_money"].includes(method) ||
+    typeof reference !== "string" ||
+    !reference ||
+    reference.length > 200
+  ) {
+    paymentError(res, 400, "Référence ou cible de paiement invalide");
+  }
   let payment = await Payment.findOne({ method, reference });
   let wasExisting = Boolean(payment);
   if (payment) {

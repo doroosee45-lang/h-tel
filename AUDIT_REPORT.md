@@ -13,8 +13,8 @@ Inspection statique des routeurs, contrôleurs, modèles, middlewares, clients A
 
 - **Élevé — paiements** : le montant transmis au serveur déterminait le montant Stripe/PayPal/Mobile Money ; le webhook Mobile Money faisait confiance au corps reçu ; les références de transaction n’étaient pas idempotentes. Le serveur vérifie désormais le propriétaire client, la facture/commande, le solde restant et le montant en centimes. Mobile Money vérifie le statut auprès de l’API configurée de l’agrégateur ; les paiements sont rattachés aux commandes et les références fournisseur sont uniques et rejouables sans créer un second paiement.
 - **Élevé — réservations** : les dates invalides ou inversées n’étaient pas rejetées uniformément, une remise envoyée par le client pouvait diminuer le prix, et la mise à jour acceptait des champs comme statut, client, prix et montant réglé. Les dates sont strictement validées, les chambres inactives/en maintenance refusées, les remises manuelles sont bornées et réservées au personnel, le client doit exister, et la mise à jour n’accepte que notes/adultes/enfants. La disponibilité de chambre n’est plus remise à « disponible » si un autre séjour l’occupe ou la réserve.
-- **Élevé — erreurs et CORS** : le middleware d’erreur renvoyait message interne et stack en développement ; les erreurs serveur renvoient maintenant un message générique sans stack. Les origines CORS non configurées ne sont plus ouvertes en production.
-- **Moyen — authentification et recherche** : ajout d’une limite aux tentatives login/inscription/2FA et échappement/limitation des paramètres utilisés dans des expressions régulières de recherche.
+- **Élevé — erreurs, CSRF et CORS** : le middleware d’erreur renvoyait message interne et stack en développement ; les erreurs serveur renvoient maintenant un message générique sans stack. Les écritures authentifiées par cookie de renouvellement exigent l’origine web configurée ; les origines CORS non configurées ne sont plus ouvertes en production.
+- **Moyen — authentification et recherche** : ajout d’une limite aux tentatives login/inscription/2FA et au webhook Stripe (monté avant le limiteur API global), validation stricte des identifiants MongoDB exposés et échappement/limitation des paramètres de recherche utilisés comme expressions régulières.
 - **Dépendances** : mises à jour compatibles semver appliquées ; les dépendances de production backend ne signalent plus d’avis `npm audit`. Trois avis élevés demeurent dans l’arbre de développement via `nodemon → chokidar → braces` ; `npm audit fix --force` propose une rétrogradation majeure de nodemon, non retenue.
 
 ### Web
@@ -29,7 +29,7 @@ Inspection statique des routeurs, contrôleurs, modèles, middlewares, clients A
 
 ## Vérifications effectuées
 
-- `backend/npm test` : **6 tests réussis** (dates/remises, montant exact, recherche littérale bornée, absence de stack/message interne).
+- `backend/npm test` : **9 tests réussis** (dates/remises, montant exact, recherche littérale bornée, contrôle CSRF, absence de stack/message interne).
 - `backend/npm run check` : **réussi**, 29 routeurs montés.
 - `frontend/npm run lint` : **réussi**, avec avertissements existants (notamment imports inutilisés, effets React et génération QR pseudo-aléatoire).
 - `frontend/npm run build` : **réussi** ; avertissement de bundle principal volumineux (~1,19 Mo).

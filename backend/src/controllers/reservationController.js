@@ -50,11 +50,15 @@ const getReservation = asyncHandler(async (req, res) => {
 // @route POST /api/reservations
 const createReservation = asyncHandler(async (req, res) => {
   const { room: roomId, checkInDate, checkOutDate, adults, children, source, notes, discount } = req.body;
-  const client = req.client?._id || req.body.client;
+  const client = req.client?._id?.toString() || req.body.client;
 
-  if (!client) {
+  if (!isObjectId(client)) {
     res.status(400);
-    throw new Error("Client requis (connectez-vous ou précisez l'ID client)");
+    throw new Error("Client requis ou identifiant invalide");
+  }
+  if (!isObjectId(roomId)) {
+    res.status(400);
+    throw new Error("Identifiant de chambre invalide");
   }
   if (!(await Client.exists({ _id: client }))) {
     res.status(404);
@@ -140,6 +144,10 @@ const createReservation = asyncHandler(async (req, res) => {
 
 // @route PUT /api/reservations/:id
 const updateReservation = asyncHandler(async (req, res) => {
+  if (!isObjectId(req.params.id)) {
+    res.status(400);
+    throw new Error("Identifiant de réservation invalide");
+  }
   const allowedFields = ["notes", "adults", "children"];
   const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
   const unexpectedFields = Object.keys(body).filter((field) => !allowedFields.includes(field));

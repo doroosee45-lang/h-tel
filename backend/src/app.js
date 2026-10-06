@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
+const csrfProtection = require("./middleware/csrfProtection");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 const auditLogger = require("./middleware/auditLogger");
 
@@ -46,11 +47,18 @@ app.use(cors(corsOptions));
 
 // IMPORTANT: le webhook Stripe doit être monté AVANT express.json(), car Stripe exige
 // le corps brut (non parsé) de la requête pour vérifier la signature cryptographique.
-app.post("/api/payments/gateway/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhook);
+const stripeWebhookLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500 });
+app.post(
+  "/api/payments/gateway/stripe/webhook",
+  stripeWebhookLimiter,
+  express.raw({ type: "application/json" }),
+  stripeWebhook
+);
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(csrfProtection);
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(auditLogger); // Journalisation complète des actions d'écriture (§15 Sécurité)
 

@@ -88,9 +88,9 @@ function Highlight({ text, query }) {
 // Toutes les données viennent du contexte (si disponible) sinon des mocks.
 // ---------------------------------------------------------------------------
 function buildGlobalIndex(userRole, appState) {
-  const isAdmin = userRole === 'Super Admin';
-  const isManager = userRole === 'Manager';
-  const isClient = userRole === 'Client';
+  const isAdmin = userRole === 'admin';
+  const isManager = !!userRole && userRole !== 'admin' && userRole !== 'client';
+  const isClient = userRole === 'client';
 
   const roomsList = appState.rooms || staticRooms;
   const reservationsList = appState.reservations || staticReservations;
@@ -745,4 +745,3 @@ export default function GlobalSearch({ open, onClose }) {
     </Dialog>
   );
 }
-

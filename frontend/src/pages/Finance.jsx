@@ -1,131 +1,111 @@
-import { useState } from 'react';
-import { Grid, Card, Box, Typography, Stack, Chip, Button, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
-import LockOpenRoundedIcon from '@mui/icons-material/LockOpenRounded';
-import LockRoundedIcon from '@mui/icons-material/LockRounded';
-import SearchField from '../components/common/SearchField.jsx';
+import { Alert, Box, Card, Chip, Grid, List, ListItem, ListItemText, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { api, unwrap } from '../api/client.js';
+import { useAsyncData } from '../hooks/useAsyncData.js';
+import { EmptyCard, ErrorCard, LoadingCard } from '../components/common/StateViews.jsx';
+import { formatCurrency, formatDate, fullName, sentenceCase } from '../utils/format.js';
 import { tokens } from '../theme.js';
-import { financeJournal, financeTrend, financeIndicateurs, caisse, kpis, currency } from '../data/mockData.js';
-import { filterRecords } from '../utils/searchUtils.js';
+
+async function safeRequest(request, fallback) {
+  try {
+    return unwrap(await request());
+  } catch {
+    return fallback;
+  }
+}
+
+async function loadFinance() {
+  const [invoices, cashRegisters, expenses, dailyReport, ledger] = await Promise.all([
+    safeRequest(() => api.get('/finance/invoices'), []),
+    safeRequest(() => api.get('/finance/cash-register'), []),
+    safeRequest(() => api.get('/finance/expenses'), []),
+    safeRequest(() => api.get('/finance/reports/daily'), null),
+    safeRequest(() => api.get('/finance/reports/ledger', { params: { from: new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10), to: new Date().toISOString().slice(0, 10) } }), null)
+  ]);
+
+  return { invoices, cashRegisters, expenses, dailyReport, ledger };
+}
 
 export default function Finance() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const solde = kpis.recettesJour - kpis.depensesJour;
-  const journalRows = filterRecords(financeJournal, searchQuery, ['libelle', 'type', 'montant', 'date']);
+  const { data, loading, error, reload } = useAsyncData(loadFinance, []);
+
+  if (loading) return <LoadingCard message="Chargement des données financières…" />;
+  if (error) return <ErrorCard error={error} onRetry={reload} />;
 
   return (
-    <Grid container spacing={2.5}>
-      <Grid item xs={12} md={4}>
-        <Stack spacing={2.5}>
-          <Card sx={{ p: 2.5 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-              <Box>
-                <Typography variant="overline" color="text.secondary">Caisse</Typography>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.4 }}>
-                  {caisse.statut === 'Ouverte' ? (
-                    <LockOpenRoundedIcon sx={{ fontSize: 18, color: tokens.color.success }} />
-                  ) : (
-                    <LockRoundedIcon sx={{ fontSize: 18, color: tokens.color.danger }} />
-                  )}
-                  <Typography sx={{ fontWeight: 700 }}>{caisse.statut}</Typography>
-                </Stack>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.4 }}>
-                  Par {caisse.ouvertePar} à {caisse.heureOuverture}
-                </Typography>
-              </Box>
-              <Button size="small" variant={caisse.statut === 'Ouverte' ? 'outlined' : 'contained'} color={caisse.statut === 'Ouverte' ? 'error' : 'primary'} sx={{ borderColor: tokens.color.line }}>
-                {caisse.statut === 'Ouverte' ? 'Fermer' : 'Ouvrir'}
-              </Button>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" sx={{ mt: 1.6 }}>
-              <Box>
-                <Typography variant="caption" color="text.secondary">Solde initial</Typography>
-                <Typography sx={{ fontFamily: tokens.font.mono, fontWeight: 600 }}>{currency(caisse.soldeInitial)}</Typography>
-              </Box>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="caption" color="text.secondary">Solde actuel</Typography>
-                <Typography sx={{ fontFamily: tokens.font.mono, fontWeight: 700, color: tokens.color.navy }}>{currency(caisse.soldeActuel)}</Typography>
-              </Box>
-            </Stack>
-          </Card>
-          <Card sx={{ p: 2.5 }}>
-            <Typography variant="overline" color="text.secondary">Recettes du jour</Typography>
-            <Typography variant="h4" sx={{ color: tokens.color.success }}>{currency(kpis.recettesJour)}</Typography>
-          </Card>
-          <Card sx={{ p: 2.5 }}>
-            <Typography variant="overline" color="text.secondary">Dépenses du jour</Typography>
-            <Typography variant="h4" sx={{ color: tokens.color.warning }}>{currency(kpis.depensesJour)}</Typography>
-          </Card>
-          <Card sx={{ p: 2.5, bgcolor: tokens.color.navy, color: '#fff' }}>
-            <Typography variant="overline" sx={{ color: 'rgba(255,255,255,0.6)' }}>Solde de caisse</Typography>
-            <Typography variant="h4" sx={{ color: tokens.color.gold }}>{currency(solde)}</Typography>
-          </Card>
-          <Card sx={{ p: 2.5 }}>
-            <Typography variant="overline" color="text.secondary">Bénéfice net (mois)</Typography>
-            <Typography variant="h4">{currency(financeIndicateurs.beneficeNet)}</Typography>
-            <Typography variant="caption" color="text.secondary">Marge bénéficiaire {financeIndicateurs.margeBeneficiaire}%</Typography>
-          </Card>
-          <Card sx={{ p: 2.5 }}>
-            <Typography variant="overline" color="text.secondary">Flux de trésorerie</Typography>
-            <Typography variant="h5">{currency(financeIndicateurs.fluxTresorerieJour)} <Typography component="span" variant="caption" color="text.secondary">/ jour</Typography></Typography>
-            <Typography variant="caption" color="text.secondary">{currency(financeIndicateurs.fluxTresorerieMois)} sur le mois</Typography>
-          </Card>
-        </Stack>
+    <Box>
+      <Alert severity="info" sx={{ mb: 2.5 }}>
+        Factures et caisses sont branchées sur l'API. Les rapports et dépenses restent visibles seulement si le rôle connecté dispose des droits backend requis.
+      </Alert>
+
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        <Grid item xs={12} md={3}><Card sx={{ p: 3 }}><Typography variant="h6">Factures</Typography><Typography variant="h3">{data?.invoices?.length || 0}</Typography></Card></Grid>
+        <Grid item xs={12} md={3}><Card sx={{ p: 3 }}><Typography variant="h6">Caisses</Typography><Typography variant="h3">{data?.cashRegisters?.length || 0}</Typography></Card></Grid>
+        <Grid item xs={12} md={3}><Card sx={{ p: 3 }}><Typography variant="h6">Dépenses</Typography><Typography variant="h3">{data?.expenses?.length || 0}</Typography></Card></Grid>
+        <Grid item xs={12} md={3}><Card sx={{ p: 3 }}><Typography variant="h6">Revenu journalier</Typography><Typography variant="h4">{formatCurrency(data?.dailyReport?.totalRevenue || 0)}</Typography></Card></Grid>
       </Grid>
 
-      <Grid item xs={12} md={8}>
-        <Card sx={{ p: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>Recettes vs dépenses (indice mensuel)</Typography>
-          <ResponsiveContainer width="100%" height={230}>
-            <BarChart data={financeTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke={tokens.color.line} vertical={false} />
-              <XAxis dataKey="mois" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis tickLine={false} axisLine={false} fontSize={12} />
-              <Tooltip contentStyle={{ borderRadius: 10, border: `1px solid ${tokens.color.line}` }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="recettes" name="Recettes" fill={tokens.color.navy} radius={[6, 6, 0, 0]} />
-              <Bar dataKey="depenses" name="Dépenses" fill={tokens.color.gold} radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-      </Grid>
-
-      <Grid item xs={12}>
-        <Card sx={{ overflowX: 'auto' }}>
-            <Box sx={{ p: 3, pb: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
-              <Typography variant="h6">Journal de caisse — aujourd’hui</Typography>
-              <SearchField
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Rechercher un libellé, type, montant…"
-                sx={{ minWidth: { sm: 260 } }}
-              />
-            </Box>
-            <Table sx={{ minWidth: 560 }}>
-              <TableHead>
-                <TableRow sx={{ bgcolor: tokens.color.cream }}>
-                  {['Date', 'Libellé', 'Type', 'Montant'].map((h) => (
-                    <TableCell key={h} sx={{ fontFamily: tokens.font.mono, fontSize: 11, color: 'text.secondary', textTransform: 'uppercase' }}>{h}</TableCell>
+      <Grid container spacing={2.5}>
+        <Grid item xs={12} lg={7}>
+          {(data?.invoices || []).length ? (
+            <Card sx={{ overflowX: 'auto' }}>
+              <Table sx={{ minWidth: 860 }}>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: tokens.color.cream }}>
+                    {['Facture', 'Client', 'Type', 'Total', 'Statut', 'Créée le'].map((label) => (
+                      <TableCell key={label} sx={{ fontFamily: tokens.font.mono, fontSize: 11, textTransform: 'uppercase', color: 'text.secondary' }}>{label}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {data.invoices.map((invoice) => (
+                    <TableRow key={invoice._id} hover>
+                      <TableCell>{invoice.invoiceNumber}</TableCell>
+                      <TableCell>{fullName(invoice.client)}</TableCell>
+                      <TableCell>{sentenceCase(invoice.type)}</TableCell>
+                      <TableCell>{formatCurrency(invoice.total)}</TableCell>
+                      <TableCell><Chip label={sentenceCase(invoice.status)} size="small" /></TableCell>
+                      <TableCell>{formatDate(invoice.createdAt)}</TableCell>
+                    </TableRow>
                   ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {journalRows.map((f) => (
-                <TableRow key={f.id} hover>
-                  <TableCell>{new Date(f.date).toLocaleDateString('fr-FR')}</TableCell>
-                  <TableCell sx={{ fontWeight: 500 }}>{f.libelle}</TableCell>
-                  <TableCell>
-                    <Chip label={f.type} size="small" sx={{ bgcolor: f.type === 'Recette' ? tokens.color.successSoft : tokens.color.dangerSoft, color: f.type === 'Recette' ? tokens.color.success : tokens.color.danger, fontWeight: 700 }} />
-                  </TableCell>
-                  <TableCell sx={{ fontFamily: tokens.font.mono, fontWeight: 700, color: f.montant > 0 ? tokens.color.success : tokens.color.danger }}>
-                    {f.montant > 0 ? '+' : ''}{currency(f.montant)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+                </TableBody>
+              </Table>
+            </Card>
+          ) : (
+            <EmptyCard title="Aucune facture" message="Le backend ne renvoie aucune facture." />
+          )}
+        </Grid>
+
+        <Grid item xs={12} lg={5}>
+          <Card sx={{ p: 3, mb: 2.5 }}>
+            <Typography variant="h6">Rapport du jour</Typography>
+            {data?.dailyReport ? (
+              <List disablePadding>
+                <ListItem disableGutters divider><ListItemText primary="Chiffre d'affaires" secondary={formatCurrency(data.dailyReport.totalRevenue)} /></ListItem>
+                <ListItem disableGutters divider><ListItemText primary="Dépenses" secondary={formatCurrency(data.dailyReport.totalExpenses)} /></ListItem>
+                <ListItem disableGutters divider><ListItemText primary="Profit net" secondary={formatCurrency(data.dailyReport.netProfit)} /></ListItem>
+                <ListItem disableGutters><ListItemText primary="Paiements enregistrés" secondary={data.dailyReport.paymentCount} /></ListItem>
+              </List>
+            ) : (
+              <Typography color="text.secondary">Aucun rapport détaillé disponible pour ce rôle.</Typography>
+            )}
+          </Card>
+
+          <Card sx={{ p: 3 }}>
+            <Typography variant="h6">Grand livre</Typography>
+            {data?.ledger?.ledger?.length ? (
+              <List disablePadding>
+                {data.ledger.ledger.slice(0, 8).map((entry, index) => (
+                  <ListItem key={index} disableGutters divider>
+                    <ListItemText primary={entry.description} secondary={`${formatDate(entry.date)} · ${sentenceCase(entry.type)} · Solde ${formatCurrency(entry.balance)}`} />
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography color="text.secondary">Le grand livre n'est pas accessible ou ne contient aucune écriture sur la période.</Typography>
+            )}
+          </Card>
+        </Grid>
       </Grid>
-    </Grid>
+    </Box>
   );
 }

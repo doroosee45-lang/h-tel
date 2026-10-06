@@ -1,107 +1,153 @@
-import { useContext, useState } from 'react';
-import { Grid, Card, Box, Typography, Stack, Chip, LinearProgress, Tabs, Tab, Button } from '@mui/material';
-import LocalBarRoundedIcon from '@mui/icons-material/LocalBarRounded';
-import QRFrame from '../components/common/QRFrame.jsx';
-import CartSummary from '../components/common/CartSummary.jsx';
-import SearchField from '../components/common/SearchField.jsx';
-import { tokens } from '../theme.js';
+import { useContext, useMemo, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  Chip,
+  Dialog,
+  DialogContent,
+  Grid,
+  MenuItem,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography
+} from '@mui/material';
 import { AppContext } from '../context/AppContext.jsx';
-import { barItems, barCategories, currency } from '../data/mockData.js';
-import { filterRecords } from '../utils/searchUtils.js';
+import { api, unwrap } from '../api/client.js';
+import { useAsyncData } from '../hooks/useAsyncData.js';
+import { EmptyCard, ErrorCard, LoadingCard } from '../components/common/StateViews.jsx';
+import { formatCurrency, fullName, sentenceCase } from '../utils/format.js';
+import { tokens } from '../theme.js';
+
+async function loadBar(isClient) {
+  const requests = [api.get('/bar/items'), api.get('/bar/categories')];
+  if (!isClient) requests.push(api.get('/bar/orders'));
+  const [itemsRes, categoriesRes, ordersRes] = await Promise.all(requests);
+  return {
+    items: unwrap(itemsRes) || [],
+    categories: unwrap(categoriesRes) || [],
+    orders: unwrap(ordersRes) || []
+  };
+}
 
 export default function Bar() {
-  const [tab, setTab] = useState('Tous');
-  const [searchQuery, setSearchQuery] = useState('');
-  const { addToCart, userRole } = useContext(AppContext);
-  const isClient = userRole === 'Client';
-  const cats = ['Tous', ...barCategories];
-  const items = filterRecords(
-    barItems.filter((i) => tab === 'Tous' || i.categorie === tab),
-    searchQuery,
-    ['nom', 'categorie', 'marque', 'volume', 'prix', 'description', 'id', 'stock']
-  );
+  const { authType } = useContext(AppContext);
+  const isClient = authType === 'client';
+  const { data, loading, error, reload } = useAsyncData(() => loadBar(isClient), [isClient]);
+  const [category, setCategory] = useState('all');
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+
+  const items = useMemo(() => (data?.items || []).filter((item) => category === 'all' || item.category?._id === category), [category, data?.items]);
+
+  const handleOrder = async () => {
+    const payload = { items: [{ menuItem: selectedItem._id, quantity: Number(quantity) }] };
+    if (isClient) {
+      await api.post('/client-portal/order', { ...payload, origin: 'bar' });
+    } else {
+      await api.post('/bar/orders', payload);
+    }
+    setSelectedItem(null);
+    setQuantity(1);
+    await reload();
+  };
+
+  if (loading) return <LoadingCard message="Chargement du bar…" />;
+  if (error) return <ErrorCard error={error} onRetry={reload} />;
 
   return (
     <Box>
-      <SearchField
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder="Rechercher une boisson, une marque, une catégorie…"
-        sx={{ mb: 2.5, maxWidth: 360 }}
-      />
-      <Tabs
-        value={tab}
-        onChange={(_, v) => setTab(v)}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{ minHeight: 36, mb: 2.5, '& .MuiTab-root': { minHeight: 36, textTransform: 'none', fontWeight: 600, fontSize: 13.5 } }}
-      >
-        {cats.map((c) => <Tab key={c} label={c} value={c} />)}
-      </Tabs>
+      <Alert severity="info" sx={{ mb: 2.5 }}>
+        Les articles du bar proviennent de <strong>/api/bar/items</strong>. {isClient ? 'Les commandes client utilisent /api/client-portal/order avec origin="bar".' : 'Le suivi staff utilise /api/bar/orders.'}
+      </Alert>
 
-      <Grid container spacing={2.5}>
-        <Grid item xs={12} lg={8}>
-          <Grid container spacing={2.5}>
-            {items.map((item) => {
-              const critique = item.stock < 10;
-              return (
-                <Grid item xs={12} sm={6} md={4} key={item.id}>
-                  <Card sx={{ overflow: 'hidden' }}>
-                <QRFrame radius={0}>
-                  <Box sx={{ position: 'relative', height: 150 }}>
-                    <Box component="img" src={item.image} alt={item.nom} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <Chip
-                      icon={<LocalBarRoundedIcon sx={{ fontSize: 15 }} />}
-                      label={item.categorie}
-                      size="small"
-                      sx={{ position: 'absolute', top: 10, left: 10, bgcolor: 'rgba(11,37,69,0.8)', color: '#fff', fontWeight: 600 }}
-                    />
-                  </Box>
-                </QRFrame>
-                <Box sx={{ p: 2 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography sx={{ fontWeight: 600 }}>{item.nom}</Typography>
-                    <Typography sx={{ fontFamily: tokens.font.mono, fontWeight: 700, color: tokens.color.navy }}>{currency(item.prix)}</Typography>
-                  </Stack>
-                  <Typography variant="caption" color="text.secondary">{item.marque} · {item.volume}</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.6, fontSize: 12.5 }}>{item.description}</Typography>
-                  {!isClient && (
-                    <Box sx={{ mt: 1.4 }}>
-                      <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.4 }}>
-                        <Typography variant="caption" color="text.secondary">Stock</Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: critique ? tokens.color.warning : 'text.secondary' }}>
-                          {item.stock} unités {critique && '· seuil bas'}
-                        </Typography>
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} sx={{ mb: 2.5, gap: 1.5 }}>
+        <TextField select size="small" value={category} onChange={(event) => setCategory(event.target.value)} sx={{ minWidth: 240 }}>
+          <MenuItem value="all">Toutes les catégories</MenuItem>
+          {(data?.categories || []).map((item) => (
+            <MenuItem key={item._id} value={item._id}>{item.name}</MenuItem>
+          ))}
+        </TextField>
+        {!isClient ? <Chip label={`${(data?.orders || []).length} commande(s)`} /> : null}
+      </Stack>
+
+      {!items.length ? (
+        <EmptyCard title="Aucune boisson" message="Le backend ne renvoie aucun article bar disponible." />
+      ) : (
+        <Grid container spacing={2.5}>
+          <Grid item xs={12} lg={isClient ? 12 : 7}>
+            <Grid container spacing={2.5}>
+              {items.map((item) => (
+                <Grid item xs={12} md={6} key={item._id}>
+                  <Card sx={{ p: 2.5, height: '100%' }}>
+                    <Stack spacing={1.2} sx={{ height: '100%' }}>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Box>
+                          <Typography variant="h6">{item.name}</Typography>
+                          <Typography color="text.secondary">{item.category?.name || 'Sans catégorie'}</Typography>
+                        </Box>
+                        <Chip label={item.isAvailable ? 'Disponible' : 'Indisponible'} size="small" color={item.isAvailable ? 'success' : 'default'} />
                       </Stack>
-                      <LinearProgress
-                        variant="determinate"
-                        value={Math.min(100, (item.stock / 60) * 100)}
-                        sx={{ height: 6, borderRadius: 6, bgcolor: tokens.color.line, '& .MuiLinearProgress-bar': { bgcolor: critique ? tokens.color.warning : tokens.color.success, borderRadius: 6 } }}
-                      />
-                    </Box>
-                  )}
-                  <Button
-                    disabled={item.stock <= 0}
-                    variant="contained"
-                    color="secondary"
-                    size="small"
-                    fullWidth
-                    sx={{ mt: 1.5, boxShadow: 'none' }}
-                    onClick={() => addToCart(item)}
-                  >
-                    Acheter
-                  </Button>
-                </Box>
+                      <Typography color="text.secondary">{item.description || 'Aucune description.'}</Typography>
+                      <Typography sx={{ fontWeight: 700 }}>{formatCurrency(item.price)}</Typography>
+                      <Box sx={{ mt: 'auto' }}>
+                        <Button variant="contained" color="secondary" onClick={() => setSelectedItem(item)} disabled={!item.isAvailable}>
+                          Commander
+                        </Button>
+                      </Box>
+                    </Stack>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Grid>
+
+          {!isClient ? (
+            <Grid item xs={12} lg={5}>
+              <Card sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: 520 }}>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: tokens.color.cream }}>
+                      {['Commande', 'Client', 'Total', 'Statut'].map((label) => (
+                        <TableCell key={label} sx={{ fontFamily: tokens.font.mono, fontSize: 11, textTransform: 'uppercase', color: 'text.secondary' }}>{label}</TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(data?.orders || []).slice(0, 10).map((order) => (
+                      <TableRow key={order._id} hover>
+                        <TableCell>{order.orderNumber}</TableCell>
+                        <TableCell>{fullName(order.client)}</TableCell>
+                        <TableCell>{formatCurrency(order.total)}</TableCell>
+                        <TableCell><Chip label={sentenceCase(order.status)} size="small" /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </Card>
             </Grid>
-          );
-        })}
-          </Grid>
+          ) : null}
         </Grid>
-      <Grid item xs={12} lg={4}>
-        <CartSummary />
-      </Grid>
-    </Grid>
-  </Box>
+      )}
+
+      <Dialog open={Boolean(selectedItem)} onClose={() => setSelectedItem(null)} maxWidth="xs" fullWidth>
+        <DialogContent sx={{ p: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>{selectedItem?.name}</Typography>
+          <Stack spacing={2}>
+            <TextField label="Quantité" type="number" value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} />
+            <Stack direction="row" justifyContent="flex-end" spacing={1.2}>
+              <Button variant="outlined" onClick={() => setSelectedItem(null)}>Annuler</Button>
+              <Button variant="contained" color="secondary" onClick={handleOrder}>Confirmer</Button>
+            </Stack>
+          </Stack>
+        </DialogContent>
+      </Dialog>
+    </Box>
   );
 }

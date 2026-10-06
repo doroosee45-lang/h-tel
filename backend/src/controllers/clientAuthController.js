@@ -145,7 +145,10 @@ const getClientMe = asyncHandler(async (req, res) => {
 // @desc    Mise à jour du profil (nom, téléphone, photo...)
 // @route   PUT /api/client-auth/me
 const updateClientMe = asyncHandler(async (req, res) => {
-  const { password, email, hasAccount, ...updates } = req.body; // champs sensibles non modifiables ici
+  // Liste blanche: points fidélité, VIP, isActive, tokens... ne sont jamais modifiables par le client
+  const allowed = ["firstName", "lastName", "phone", "photo", "nationality", "address", "idDocumentType", "idDocumentNumber"];
+  const updates = {};
+  for (const key of allowed) if (req.body[key] !== undefined) updates[key] = req.body[key];
   const client = await Client.findByIdAndUpdate(req.client._id, updates, {
     new: true,
     runValidators: true,

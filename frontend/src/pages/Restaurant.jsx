@@ -1,187 +1,179 @@
-import { useContext, useState } from 'react';
-import { Grid, Card, Box, Typography, Stack, Chip, Tabs, Tab, Button, Divider, IconButton, Tooltip } from '@mui/material';
-import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
-import PrintRoundedIcon from '@mui/icons-material/PrintRounded';
-import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded';
-import QRFrame from '../components/common/QRFrame.jsx';
-import CartSummary from '../components/common/CartSummary.jsx';
-import SearchField from '../components/common/SearchField.jsx';
-import { tokens } from '../theme.js';
+import { useContext, useMemo, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  Chip,
+  Dialog,
+  DialogContent,
+  Grid,
+  List,
+  ListItem,
+  ListItemText,
+  MenuItem,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography
+} from '@mui/material';
 import { AppContext } from '../context/AppContext.jsx';
-import { menuCategories, menuItems, kitchenOrders, restaurantTables, currency } from '../data/mockData.js';
-import { filterRecords } from '../utils/searchUtils.js';
+import { api, unwrap } from '../api/client.js';
+import { useAsyncData } from '../hooks/useAsyncData.js';
+import { EmptyCard, ErrorCard, LoadingCard } from '../components/common/StateViews.jsx';
+import { formatCurrency, fullName, sentenceCase } from '../utils/format.js';
+import { tokens } from '../theme.js';
 
-const statutStyle = {
-  'Nouvelle': { bg: tokens.color.dangerSoft, fg: tokens.color.danger },
-  'En préparation': { bg: tokens.color.goldSoft, fg: tokens.color.navyDeep },
-  'Prête': { bg: tokens.color.successSoft, fg: tokens.color.success },
-  'Servie': { bg: tokens.color.line, fg: 'text.secondary' }
-};
+async function loadRestaurant(isClient) {
+  const requests = [api.get('/restaurant/items'), api.get('/restaurant/categories')];
+  if (!isClient) {
+    requests.push(api.get('/restaurant/orders'));
+    requests.push(api.get('/restaurant/tables'));
+  }
 
-const tableStyle = {
-  'Libre': { bg: tokens.color.successSoft, fg: tokens.color.success },
-  'Occupée': { bg: tokens.color.navy, fg: '#fff' },
-  'Réservée': { bg: tokens.color.goldSoft, fg: tokens.color.navyDeep }
-};
+  const [itemsRes, categoriesRes, ordersRes, tablesRes] = await Promise.all(requests);
+  return {
+    items: unwrap(itemsRes) || [],
+    categories: unwrap(categoriesRes) || [],
+    orders: unwrap(ordersRes) || [],
+    tables: unwrap(tablesRes) || []
+  };
+}
 
 export default function Restaurant() {
-  const [tab, setTab] = useState('Tous');
-  const [searchQuery, setSearchQuery] = useState('');
-  const { addToCart, userRole } = useContext(AppContext);
-  const isClient = userRole === 'Client';
-  const cats = ['Tous', ...menuCategories];
-  const items = filterRecords(
-    menuItems.filter((i) => tab === 'Tous' || i.categorie === tab),
-    searchQuery,
-    ['nom', 'categorie', 'description', 'ingredients', 'allergenes', 'temps', 'prix', 'id']
-  );
+  const { authType } = useContext(AppContext);
+  const isClient = authType === 'client';
+  const { data, loading, error, reload } = useAsyncData(() => loadRestaurant(isClient), [isClient]);
+  const [category, setCategory] = useState('all');
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [orderForm, setOrderForm] = useState({ quantity: 1, notes: '', paymentMethod: 'card' });
+
+  const items = useMemo(() => (data?.items || []).filter((item) => category === 'all' || item.category?._id === category), [category, data?.items]);
+
+  const handleCreateOrder = async () => {
+    if (!selectedItem) return;
+    if (isClient) {
+      await api.post('/client-portal/order', {
+        origin: 'restaurant',
+        items: [{ menuItem: selectedItem._id, quantity: Number(orderForm.quantity), notes: orderForm.notes }]
+      });
+    } else {
+      await api.post('/restaurant/orders', {
+        items: [{ menuItem: selectedItem._id, quantity: Number(orderForm.quantity), notes: orderForm.notes }],
+        channel: 'dine_in'
+      });
+    }
+    setSelectedItem(null);
+    setOrderForm({ quantity: 1, notes: '', paymentMethod: 'card' });
+    await reload();
+  };
+
+  if (loading) return <LoadingCard message="Chargement du restaurant…" />;
+  if (error) return <ErrorCard error={error} onRetry={reload} />;
 
   return (
-    <Grid container spacing={2.5}>
-      <Grid item xs={12} lg={8}>
-        <Card sx={{ p: 3 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
-            <Typography variant="h6">Menu digital</Typography>
-            <Stack direction="row" spacing={1.2} alignItems="center">
-              <SearchField
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Rechercher un plat, une catégorie, un ingrédient…"
-                sx={{ minWidth: { sm: 240 } }}
-              />
-              <Chip label="QR Menu actif en salle & chambre" size="small" sx={{ bgcolor: tokens.color.goldSoft, color: tokens.color.navyDeep }} />
+    <Box>
+      <Alert severity="info" sx={{ mb: 2.5 }}>
+        Menu depuis <strong>/api/restaurant/items</strong>. {isClient ? 'Les commandes client passent par /api/client-portal/order.' : 'Le suivi des commandes staff utilise /api/restaurant/orders.'}
+      </Alert>
+
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} sx={{ mb: 2.5, gap: 1.5 }}>
+        <TextField select size="small" value={category} onChange={(event) => setCategory(event.target.value)} sx={{ minWidth: 240 }}>
+          <MenuItem value="all">Toutes les catégories</MenuItem>
+          {(data?.categories || []).map((item) => (
+            <MenuItem key={item._id} value={item._id}>{item.name}</MenuItem>
+          ))}
+        </TextField>
+        {!isClient ? <Chip label={`${(data?.orders || []).length} commande(s)`} /> : null}
+      </Stack>
+
+      {!items.length ? (
+        <EmptyCard title="Aucun article" message="Le restaurant ne renvoie aucun article disponible." />
+      ) : (
+        <Grid container spacing={2.5}>
+          <Grid item xs={12} lg={isClient ? 12 : 7}>
+            <Grid container spacing={2.5}>
+              {items.map((item) => (
+                <Grid item xs={12} md={6} key={item._id}>
+                  <Card sx={{ p: 2.5, height: '100%' }}>
+                    <Stack spacing={1.2} sx={{ height: '100%' }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                        <Box>
+                          <Typography variant="h6">{item.name}</Typography>
+                          <Typography color="text.secondary">{item.category?.name || 'Sans catégorie'}</Typography>
+                        </Box>
+                        <Chip label={item.isAvailable ? 'Disponible' : 'Indisponible'} color={item.isAvailable ? 'success' : 'default'} size="small" />
+                      </Stack>
+                      <Typography color="text.secondary">{item.description || 'Aucune description.'}</Typography>
+                      <Typography sx={{ fontWeight: 700 }}>{formatCurrency(item.price)}</Typography>
+                      <Box sx={{ mt: 'auto' }}>
+                        <Button variant="contained" color="secondary" onClick={() => setSelectedItem(item)} disabled={!item.isAvailable}>
+                          {isClient ? 'Commander' : 'Créer une commande'}
+                        </Button>
+                      </Box>
+                    </Stack>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Grid>
+
+          {!isClient ? (
+            <Grid item xs={12} lg={5}>
+              <Card sx={{ p: 3, mb: 2.5 }}>
+                <Typography variant="h6">Tables</Typography>
+                <List disablePadding>
+                  {(data?.tables || []).slice(0, 8).map((table) => (
+                    <ListItem key={table._id} disableGutters divider>
+                      <ListItemText primary={table.name || `Table ${table.number || ''}`} secondary={`${sentenceCase(table.status)} · ${table.seats || '—'} places`} />
+                    </ListItem>
+                  ))}
+                </List>
+              </Card>
+
+              <Card sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: 560 }}>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: tokens.color.cream }}>
+                      {['Commande', 'Client', 'Total', 'Statut'].map((label) => (
+                        <TableCell key={label} sx={{ fontFamily: tokens.font.mono, fontSize: 11, textTransform: 'uppercase', color: 'text.secondary' }}>{label}</TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(data?.orders || []).slice(0, 8).map((order) => (
+                      <TableRow key={order._id} hover>
+                        <TableCell>{order.orderNumber}</TableCell>
+                        <TableCell>{fullName(order.client)}</TableCell>
+                        <TableCell>{formatCurrency(order.total)}</TableCell>
+                        <TableCell><Chip label={sentenceCase(order.status)} size="small" /></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            </Grid>
+          ) : null}
+        </Grid>
+      )}
+
+      <Dialog open={Boolean(selectedItem)} onClose={() => setSelectedItem(null)} maxWidth="sm" fullWidth>
+        <DialogContent sx={{ p: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>{selectedItem?.name}</Typography>
+          <Stack spacing={2}>
+            <TextField label="Quantité" type="number" value={orderForm.quantity} onChange={(event) => setOrderForm((prev) => ({ ...prev, quantity: Number(event.target.value) }))} />
+            <TextField label="Notes" multiline minRows={3} value={orderForm.notes} onChange={(event) => setOrderForm((prev) => ({ ...prev, notes: event.target.value }))} />
+            <Stack direction="row" justifyContent="flex-end" spacing={1.2}>
+              <Button variant="outlined" onClick={() => setSelectedItem(null)}>Annuler</Button>
+              <Button variant="contained" color="secondary" onClick={handleCreateOrder}>Confirmer</Button>
             </Stack>
           </Stack>
-          <Tabs
-            value={tab}
-            onChange={(_, v) => setTab(v)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{ minHeight: 36, mb: 2, '& .MuiTab-root': { minHeight: 36, textTransform: 'none', fontWeight: 600, fontSize: 13.5 } }}
-          >
-            {cats.map((c) => <Tab key={c} label={c} value={c} />)}
-          </Tabs>
-
-          <Grid container spacing={2}>
-            {items.map((item) => (
-              <Grid item xs={12} sm={6} key={item.id}>
-                <Stack
-                  direction="column"
-                  spacing={1.2}
-                  sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${tokens.color.line}`, opacity: item.dispo ? 1 : 0.5 }}
-                >
-                  <Stack direction="row" spacing={1.6}>
-                    <QRFrame size={10} radius={10}>
-                      <Box component="img" src={item.image} alt={item.nom} sx={{ width: 74, height: 74, objectFit: 'cover', display: 'block' }} />
-                    </QRFrame>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontWeight: 600, fontSize: 14.5 }}>{item.nom}</Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', mt: 0.2 }}>
-                        {item.description}
-                      </Typography>
-                      <Stack direction="row" spacing={0.6} alignItems="center" sx={{ mt: 0.4, flexWrap: 'wrap' }}>
-                        <AccessTimeRoundedIcon sx={{ fontSize: 13, color: 'text.secondary' }} />
-                        <Typography variant="caption" color="text.secondary">{item.temps}</Typography>
-                        {item.allergenes.length > 0 && (
-                          <Typography variant="caption" sx={{ color: tokens.color.warning, fontWeight: 600 }}>
-                            · Allergènes : {item.allergenes.join(', ')}
-                          </Typography>
-                        )}
-                      </Stack>
-                    </Box>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography sx={{ fontFamily: tokens.font.mono, fontWeight: 700, color: tokens.color.navy }}>{currency(item.prix)}</Typography>
-                    <Chip label={item.dispo ? 'Disponible' : 'Rupture'} size="small" sx={{ fontSize: 10.5, bgcolor: item.dispo ? tokens.color.successSoft : tokens.color.dangerSoft, color: item.dispo ? tokens.color.success : tokens.color.danger }} />
-                  </Stack>
-                  <Button
-                    disabled={!item.dispo}
-                    variant="contained"
-                    color="secondary"
-                    size="small"
-                    fullWidth
-                    sx={{ boxShadow: 'none' }}
-                    onClick={() => addToCart(item)}
-                  >
-                    Ajouter au panier
-                  </Button>
-                </Stack>
-              </Grid>
-            ))}
-          </Grid>
-        </Card>
-      </Grid>
-
-      <Grid item xs={12} lg={4}>
-        <CartSummary />
-        {!isClient && (
-          <>
-            <Card sx={{ p: 3, mb: 2.5, mt: 2.5 }}>
-              <Typography variant="h6" sx={{ mb: 0.4 }}>Plan des tables</Typography>
-              <Typography variant="caption" color="text.secondary">Réservation table en un clic</Typography>
-              <Grid container spacing={1.2} sx={{ mt: 0.5 }}>
-                {restaurantTables.map((t) => (
-                  <Grid item xs={4} key={t.id}>
-                    <Box
-                      sx={{
-                        p: 1.2, borderRadius: '10px', textAlign: 'center', cursor: 'pointer',
-                        bgcolor: tableStyle[t.statut].bg, color: tableStyle[t.statut].fg
-                      }}
-                    >
-                      <Typography sx={{ fontFamily: tokens.font.mono, fontWeight: 700, fontSize: 15 }}>T{t.numero}</Typography>
-                      <Typography sx={{ fontSize: 10.5, opacity: 0.85 }}>{t.capacite} pers.</Typography>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-              <Stack direction="row" spacing={1.5} sx={{ mt: 1.6 }}>
-                {Object.entries(tableStyle).map(([k, v]) => (
-                  <Stack key={k} direction="row" spacing={0.6} alignItems="center">
-                    <Box sx={{ width: 9, height: 9, borderRadius: '3px', bgcolor: v.bg, border: `1px solid ${tokens.color.line}` }} />
-                    <Typography variant="caption" color="text.secondary">{k}</Typography>
-                  </Stack>
-                ))}
-              </Stack>
-            </Card>
-
-            <Card sx={{ p: 3 }}>
-              <Typography variant="h6" sx={{ mb: 0.4 }}>Écran cuisine</Typography>
-              <Typography variant="caption" color="text.secondary">Commandes salle, chambre & QR Code</Typography>
-              <Stack spacing={1.6} sx={{ mt: 2 }}>
-                {kitchenOrders.map((o) => (
-                  <Box key={o.id} sx={{ p: 1.6, borderRadius: '12px', bgcolor: tokens.color.cream }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography sx={{ fontFamily: tokens.font.mono, fontWeight: 700, fontSize: 13 }}>{o.id}</Typography>
-                      <Chip label={o.statut} size="small" sx={{ bgcolor: statutStyle[o.statut].bg, color: statutStyle[o.statut].fg, fontWeight: 700 }} />
-                    </Stack>
-                    <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 500 }}>{o.table}</Typography>
-                    <Typography variant="caption" color="text.secondary">{o.items.join(' · ')}</Typography>
-                    <Divider sx={{ my: 1 }} />
-                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                      <Typography variant="caption" color="text.secondary">{o.heure}</Typography>
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <Tooltip title="Imprimer le ticket cuisine">
-                          <IconButton size="small">
-                            <PrintRoundedIcon sx={{ fontSize: 17 }} />
-                          </IconButton>
-                        </Tooltip>
-                        {o.statut === 'Servie' && (
-                          <Tooltip title="Générer la facture">
-                            <IconButton size="small">
-                              <ReceiptLongRoundedIcon sx={{ fontSize: 17 }} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                        <Button size="small" sx={{ fontSize: 12 }}>Avancer →</Button>
-                      </Stack>
-                    </Stack>
-                  </Box>
-                ))}
-              </Stack>
-            </Card>
-          </>
-        )}
-      </Grid>
-    </Grid>
+        </DialogContent>
+      </Dialog>
+    </Box>
   );
 }

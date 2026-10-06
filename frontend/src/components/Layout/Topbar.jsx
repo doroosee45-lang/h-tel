@@ -26,17 +26,12 @@ import SwitchAccountRoundedIcon from '@mui/icons-material/SwitchAccountRounded';
 import { tokens } from '../../theme.js';
 import { AppContext } from '../../context/AppContext.jsx';
 import GlobalSearch from '../common/GlobalSearch.jsx';
+import { getRoleGroup, getRoleLabel } from '../../utils/auth.js';
 
 const ROLE_AVATARS = {
   'Super Admin': 'https://omedevservicefrontend.onrender.com/assets/os5-zDql6FmJ.jpeg',
   Manager: 'https://omedevservicefrontend.onrender.com/assets/os5-zDql6FmJ.jpeg',
   Client: 'https://omedevservicefrontend.onrender.com/assets/os5-zDql6FmJ.jpeg'
-};
-
-const ROLE_HOME = {
-  'Super Admin': '/dashboard',
-  Manager: '/manager',
-  Client: '/client'
 };
 
 export default function Topbar({ title, subtitle, onToggleSidebar }) {
@@ -48,7 +43,7 @@ const { userRole, notifications, logout } = useContext(AppContext);
 
   const openProfile = Boolean(anchorEl);
 
-  const unreadCount = (notifications || []).filter((n) => n.statut !== 'Lue').length;
+  const unreadCount = (notifications || []).filter((n) => !n.isRead && n.statut !== 'Lue').length;
 
   // Raccourci clavier Ctrl/Cmd+K pour ouvrir la recherche globale
   useEffect(() => {
@@ -172,7 +167,7 @@ const handleLogout = () => {
 {/* Badge de rôle (lecture seule) */}
         <Chip
           icon={<SwitchAccountRoundedIcon sx={{ fontSize: 16 }} />}
-          label={userRole === 'Super Admin' ? 'Admin' : userRole === 'Manager' ? 'Manager' : 'Client'}
+          label={getRoleGroup(userRole) === 'admin' ? 'Admin' : getRoleGroup(userRole) === 'manager' ? 'Staff' : 'Client'}
           sx={{
             fontWeight: 600,
             bgcolor: tokens.color.goldSoft,
@@ -186,7 +181,7 @@ const handleLogout = () => {
 
         {/* Notification */}
         <IconButton
-          onClick={() => navigate('/notifications')}
+          onClick={() => navigate(userRole === 'client' ? '/client/notifications' : '/notifications')}
           sx={{
             bgcolor: '#fff',
             border: `1px solid ${tokens.color.line}`
@@ -213,14 +208,14 @@ const handleLogout = () => {
           PaperProps={{ sx: { mt: 1, width: 220, borderRadius: 2 } }}
         >
           <Box sx={{ px: 2, py: 1 }}>
-            <Typography sx={{ fontWeight: 700, fontSize: 14, textTransform: 'capitalize' }}>{userRole}</Typography>
+            <Typography sx={{ fontWeight: 700, fontSize: 14 }}>{getRoleLabel(userRole)}</Typography>
             <Typography variant="caption" color="text.secondary">Connecté à Smart Hotel 360°</Typography>
           </Box>
           <Divider />
           <MenuItem
             onClick={() => {
               setAnchorEl(null);
-              const target = userRole === 'Client' ? '/client/profil' : '/profile';
+              const target = userRole === 'client' ? '/client/profil' : '/profile';
               navigate(target);
             }}
           >
@@ -240,4 +235,3 @@ const handleLogout = () => {
     </Stack>
   );
 }
-

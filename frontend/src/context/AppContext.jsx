@@ -1,169 +1,413 @@
-import { createContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { api, unwrap } from '../api/client.js';
+import { connectSocket, disconnectSocket } from '../api/socket.js';
 import {
-  rooms as initialRooms,
-  reservations as initialReservations,
-  paymentMethods,
-  payments as initialPayments,
-  notifications as initialNotifications,
-  auditLogs as initialAuditLogs,
-  portalClient
-} from '../data/mockData.js';
+  buildSession,
+  clearSession,
+  getHomePath,
+  getRoleGroup,
+  getRoleLabel,
+  getSession,
+  getUserRole,
+  isClientSession,
+  saveSession
+} from '../utils/auth.js';
 
 export const AppContext = createContext(null);
 
-/**
- * Fournisseur global de l'application Smart Hotel 360°.
- * - Gère l'authentification/rôle (Super Admin, Manager, Client)
- * - Centralise le panier, les réservations, chambres, paiements, notifications
- * - Expose des helpers (addAuditLog, addNotification) pour tracer les actions
- */
+const PAYMENT_METHODS = ['Espèces', 'Carte', 'M-Pesa', 'Orange Money', 'Virement'];
+
+function getSocketChannels(session) {
+  if (!session?.user?.id) return [];
+  if (isClientSession(session)) {
+    return [session.user.id];
+  }
+
+  const role = session.user.role;
+  const channels = [session.user.id, 'dashboard'];
+
+  if (['restaurant_manager', 'waiter'].includes(role)) channels.push('kitchen');
+  if (role === 'barman') channels.push('bar');
+  if (['admin', 'receptionist'].includes(role)) channels.push('concierge');
+
+  return [...new Set(channels)];
+}
+
+function mapNotification(notification) {
+  if (!notification) return notification;
+  return {
+    ...notification,
+    id: notification._id || notification.id,
+    statut: notification.isRead ? 'Lue' : 'Non lue',
+    heure: notification.createdAt
+  };
+}
+
 export function AppProvider({ children }) {
-  const [userRole, setUserRole] = useState(() => localStorage.getItem('sh_role') || null);
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('sh_user') || 'null');
-    } catch {
-      return null;
-    }
-  });
-  const isAuthenticated = !!userRole && !!currentUser;
-
-  const [cartItems, setCartItems] = useState([]);
+  const [session, setSession] = useState(() => getSession());
+  const [currentUser, setCurrentUser] = useState(() => getSession()?.user || null);
+  const [notifications, setNotifications] = useState([]);
+  const [pendingTwoFactor, setPendingTwoFactor] = useState(null);
+  const [authLoading, setAuthLoading] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [reservations, setReservations] = useState(initialReservations);
-  const [rooms, setRooms] = useState(initialRooms);
-  const [payments, setPayments] = useState(initialPayments);
-  const [notifications, setNotifications] = useState(initialNotifications);
-  const [auditLogs, setAuditLogs] = useState(initialAuditLogs);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(paymentMethods[0] || 'Espèces');
-
-  // Espace client (démonstration — client connecté = C001)
+  const [rooms, setRooms] = useState([]);
+  const [reservations, setReservations] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(PAYMENT_METHODS[0]);
+  const [cartItems, setCartItems] = useState([]);
   const [clientOrders, setClientOrders] = useState([]);
   const [clientActivities, setClientActivities] = useState([]);
   const [clientInvoices, setClientInvoices] = useState([]);
 
-  const cartSubtotal = useMemo(() => cartItems.reduce((sum, item) => sum + item.prix * item.quantite, 0), [cartItems]);
+  const syncSession = useCallback((nextSession) => {
+    setSession(nextSession);
+    setCurrentUser(nextSession?.user || null);
+  }, []);
 
-  const addToCart = (item) => {
+  const fetchCurrentUser = useCallback(async (activeSession = session) => {
+    if (!activeSession?.accessToken) return null;
+
+    const endpoint = isClientSession(activeSession) ? '/client-auth/me' : '/auth/me';
+    const data = unwrap(await api.get(endpoint));
+    const nextSession = {
+      ...activeSession,
+      user: {
+        ...activeSession.user,
+        ...data,
+        id: data._id || data.id || activeSession.user?.id,
+        role: isClientSession(activeSession) ? 'client' : data.role || activeSession.user?.role
+      }
+    };
+    saveSession(nextSession);
+    syncSession(nextSession);
+    return nextSession.user;
+  }, [session, syncSession]);
+
+  const fetchNotifications = useCallback(async (activeSession = session) => {
+    if (!activeSession?.accessToken) {
+      setNotifications([]);
+      return [];
+    }
+
+    const endpoint = isClientSession(activeSession) ? '/client-portal/my-notifications' : '/notifications';
+    const response = await api.get(endpoint);
+    const data = unwrap(response) || [];
+    const mapped = data.map(mapNotification);
+    setNotifications(mapped);
+    return mapped;
+  }, [session]);
+
+  const applySession = useCallback(async (nextSession) => {
+    saveSession(nextSession);
+    syncSession(nextSession);
+    await Promise.allSettled([fetchCurrentUser(nextSession), fetchNotifications(nextSession)]);
+  }, [fetchCurrentUser, fetchNotifications, syncSession]);
+
+  const loginStaff = useCallback(async ({ email, password }) => {
+    setAuthLoading(true);
+    try {
+      const response = await api.post('/auth/login', { email, password });
+      if (response.data?.twoFactorRequired) {
+        setPendingTwoFactor({ email, pendingToken: response.data?.data?.pendingToken });
+        return { twoFactorRequired: true };
+      }
+
+      const data = unwrap(response);
+      const nextSession = buildSession({
+        authType: 'staff',
+        accessToken: data.accessToken,
+        user: {
+          id: data.id,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          role: data.role
+        }
+      });
+      setPendingTwoFactor(null);
+      await applySession(nextSession);
+      return { success: true, user: nextSession.user, homePath: getHomePath(nextSession.user.role) };
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [applySession]);
+
+  const verifyStaffOtp = useCallback(async (code) => {
+    if (!pendingTwoFactor?.pendingToken) {
+      throw new Error('Aucune authentification en attente.');
+    }
+
+    setAuthLoading(true);
+    try {
+      const response = await api.post('/auth/2fa/verify-login', {
+        pendingToken: pendingTwoFactor.pendingToken,
+        code
+      });
+      const data = unwrap(response);
+      const nextSession = buildSession({
+        authType: 'staff',
+        accessToken: data.accessToken,
+        user: {
+          id: data.id,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          role: data.role
+        }
+      });
+      setPendingTwoFactor(null);
+      await applySession(nextSession);
+      return { success: true, user: nextSession.user, homePath: getHomePath(nextSession.user.role) };
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [applySession, pendingTwoFactor]);
+
+  const loginClient = useCallback(async ({ email, password }) => {
+    setAuthLoading(true);
+    try {
+      const response = await api.post('/client-auth/login', { email, password });
+      const data = unwrap(response);
+      const nextSession = buildSession({
+        authType: 'client',
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        user: {
+          id: data.id,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          loyaltyPoints: data.loyaltyPoints,
+          vipStatus: data.vipStatus
+        }
+      });
+      await applySession(nextSession);
+      return { success: true, user: nextSession.user, homePath: getHomePath(nextSession.user.role) };
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [applySession]);
+
+  const registerClient = useCallback(async (payload) => {
+    const response = await api.post('/client-auth/register', payload);
+    const data = unwrap(response);
+    const nextSession = buildSession({
+      authType: 'client',
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+      user: {
+        id: data.id,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email
+      }
+    });
+    await applySession(nextSession);
+    return { success: true, user: nextSession.user, homePath: getHomePath(nextSession.user.role) };
+  }, [applySession]);
+
+  const logout = useCallback(async () => {
+    try {
+      if (session?.accessToken) {
+        const endpoint = isClientSession(session) ? '/client-auth/logout' : '/auth/logout';
+        await api.post(endpoint, {});
+      }
+    } catch {
+      // best effort
+    } finally {
+      disconnectSocket();
+      clearSession();
+      syncSession(null);
+      setNotifications([]);
+      setPendingTwoFactor(null);
+    }
+  }, [session, syncSession]);
+
+  const markNotificationRead = useCallback(async (id) => {
+    const endpoint = isClientSession(session)
+      ? `/client-portal/my-notifications/${id}/read`
+      : `/notifications/${id}/read`;
+    await api.patch(endpoint);
+    setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, isRead: true, statut: 'Lue' } : item)));
+  }, [session]);
+
+  const login = useCallback(async (roleOrPayload, maybeUser) => {
+    if (typeof roleOrPayload === 'string' && maybeUser) {
+      const authType = roleOrPayload === 'client' ? 'client' : 'staff';
+      const nextSession = buildSession({ authType, accessToken: null, user: maybeUser });
+      syncSession(nextSession);
+      saveSession(nextSession);
+      return;
+    }
+
+    if (roleOrPayload?.authType === 'client') {
+      return loginClient(roleOrPayload);
+    }
+
+    return loginStaff(roleOrPayload);
+  }, [loginClient, loginStaff, syncSession]);
+
+  useEffect(() => {
+    const handleClear = () => {
+      disconnectSocket();
+      syncSession(null);
+      setNotifications([]);
+    };
+
+    window.addEventListener('sh-auth-cleared', handleClear);
+    return () => window.removeEventListener('sh-auth-cleared', handleClear);
+  }, [syncSession]);
+
+  useEffect(() => {
+    if (!session?.accessToken) {
+      disconnectSocket();
+      return;
+    }
+
+    const socket = connectSocket({
+      token: session.accessToken,
+      channels: getSocketChannels(session),
+      onNotification: (payload) => {
+        const item = mapNotification(payload);
+        setNotifications((prev) => [item, ...prev.filter((existing) => existing.id !== item.id)]);
+      },
+      onOrderEvent: () => {
+        // pages can refetch on navigation; keeping hook lightweight here
+      }
+    });
+
+    return () => socket?.disconnect();
+  }, [session]);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+    fetchCurrentUser(session).catch(() => logout());
+    fetchNotifications(session).catch(() => {});
+  }, [fetchCurrentUser, fetchNotifications, logout, session]);
+
+  const addToCart = useCallback((item) => {
     setCartItems((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
+      const existing = prev.find((entry) => entry.id === item.id);
       if (existing) {
-        return prev.map((i) => (i.id === item.id ? { ...i, quantite: i.quantite + 1 } : i));
+        return prev.map((entry) => (entry.id === item.id ? { ...entry, quantite: entry.quantite + 1 } : entry));
       }
       return [...prev, { ...item, quantite: 1 }];
     });
-  };
+  }, []);
 
-  const updateCartItem = (id, quantite) => {
-    setCartItems((prev) => prev
-      .map((item) => (item.id === id ? { ...item, quantite: Math.max(1, quantite) } : item))
-      .filter((item) => item.quantite > 0)
-    );
-  };
+  const updateCartItem = useCallback((id, quantite) => {
+    setCartItems((prev) => prev.map((item) => (item.id === id ? { ...item, quantite } : item)).filter((item) => item.quantite > 0));
+  }, []);
 
-  const removeCartItem = (id) => {
+  const removeCartItem = useCallback((id) => {
     setCartItems((prev) => prev.filter((item) => item.id !== id));
-  };
+  }, []);
 
-  const clearCart = () => setCartItems([]);
+  const clearCart = useCallback(() => setCartItems([]), []);
+  const reserveRoom = useCallback((room) => setSelectedRoom(room), []);
+  const addAuditLog = useCallback((action, module = 'Système') => {
+    setAuditLogs((prev) => [{ id: Date.now(), action, module, timestamp: new Date().toISOString(), status: 'Réussi' }, ...prev]);
+  }, []);
+  const addNotification = useCallback((title, destinataire = 'Système', canal = 'Socket.io') => {
+    setNotifications((prev) => [{ id: Date.now(), title, destinataire, canal, isRead: false, statut: 'Non lue', createdAt: new Date().toISOString() }, ...prev]);
+  }, []);
 
-  const reserveRoom = (room) => {
-    setSelectedRoom(room);
-  };
+  const userRole = getUserRole(session);
+  const userRoleLabel = getRoleLabel(userRole);
+  const userRoleGroup = getRoleGroup(userRole);
+  const isAuthenticated = Boolean(session?.accessToken);
+  const cartSubtotal = useMemo(() => cartItems.reduce((sum, item) => sum + (item.prix || item.unitPrice || 0) * item.quantite, 0), [cartItems]);
 
-const login = (role, user) => {
-    setUserRole(role);
-    setCurrentUser(user);
-    localStorage.setItem('sh_role', role);
-    localStorage.setItem('sh_user', JSON.stringify(user));
-  };
-
-  const logout = () => {
-    setUserRole(null);
-    setCurrentUser(null);
-    localStorage.removeItem('sh_role');
-    localStorage.removeItem('sh_user');
-  };
-
-  const addAuditLog = (action, module = 'Système') => {
-    setAuditLogs((prev) => [
-      {
-        id: Date.now(),
-        timestamp: new Date().toLocaleString('fr-FR'),
-        user: currentUser?.nom || userRole,
-        action,
-        module,
-        status: 'Réussi'
-      },
-      ...prev
-    ]);
-  };
-
-  const addNotification = (titre, destinataire = 'Tous', canal = 'Push + Email') => {
-    setNotifications((prev) => [
-      {
-        id: Date.now(),
-        titre,
-        destinataire,
-        canal,
-        heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-        statut: 'Envoyée'
-      },
-      ...prev
-    ]);
-  };
-
-const value = {
-    // Auth & rôles
-    userRole,
-    setUserRole,
-    login,
-    logout,
-    isAuthenticated,
+  const value = useMemo(() => ({
+    session,
+    authType: session?.authType || null,
     currentUser,
-
-    // Panier
+    userRole,
+    userRoleLabel,
+    userRoleGroup,
+    homePath: getHomePath(userRole),
+    isAuthenticated,
+    authLoading,
+    pendingTwoFactor,
+    login,
+    loginStaff,
+    loginClient,
+    registerClient,
+    verifyStaffOtp,
+    logout,
+    fetchCurrentUser,
+    fetchNotifications,
+    notifications,
+    setNotifications,
+    markNotificationRead,
+    addNotification,
+    rooms,
+    setRooms,
+    selectedRoom,
+    setSelectedRoom,
+    reserveRoom,
+    reservations,
+    setReservations,
+    payments,
+    setPayments,
+    selectedPaymentMethod,
+    setSelectedPaymentMethod,
+    paymentMethods: PAYMENT_METHODS,
+    auditLogs,
+    setAuditLogs,
+    addAuditLog,
     cartItems,
     cartSubtotal,
     addToCart,
     updateCartItem,
     removeCartItem,
     clearCart,
-
-    // Chambres & réservations
-    selectedRoom,
-    reserveRoom,
-    setSelectedRoom,
-    reservations,
-    setReservations,
-    rooms,
-    setRooms,
-
-    // Paiements
-    selectedPaymentMethod,
-    setSelectedPaymentMethod,
-    paymentMethods,
-    payments,
-    setPayments,
-
-    // Notifications & audit
-    notifications,
-    setNotifications,
-    addNotification,
-    auditLogs,
-    setAuditLogs,
-    addAuditLog,
-
-    // Espace client
-    portalClient,
+    portalClient: currentUser,
     clientOrders,
     setClientOrders,
     clientActivities,
     setClientActivities,
     clientInvoices,
     setClientInvoices
-  };
+  }), [
+    addAuditLog,
+    addNotification,
+    addToCart,
+    auditLogs,
+    authLoading,
+    cartItems,
+    cartSubtotal,
+    clearCart,
+    clientActivities,
+    clientInvoices,
+    clientOrders,
+    currentUser,
+    fetchCurrentUser,
+    fetchNotifications,
+    isAuthenticated,
+    login,
+    loginClient,
+    loginStaff,
+    logout,
+    markNotificationRead,
+    notifications,
+    payments,
+    pendingTwoFactor,
+    registerClient,
+    removeCartItem,
+    reservations,
+    reserveRoom,
+    rooms,
+    selectedPaymentMethod,
+    selectedRoom,
+    session,
+    updateCartItem,
+    userRole,
+    userRoleGroup,
+    userRoleLabel,
+    verifyStaffOtp
+  ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-

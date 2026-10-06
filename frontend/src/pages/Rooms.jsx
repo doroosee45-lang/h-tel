@@ -1,353 +1,188 @@
-import { useContext, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Grid, Card, Box, Typography, Stack, Chip, Button, ToggleButtonGroup, ToggleButton, Dialog, DialogContent, TextField, MenuItem, Snackbar, Alert } from '@mui/material';
-import QrCode2RoundedIcon from '@mui/icons-material/QrCode2Rounded';
-import LayersRoundedIcon from '@mui/icons-material/LayersRounded';
-import QRFrame from '../components/common/QRFrame.jsx';
-import RoomDetailDialog from '../components/common/RoomDetailDialog.jsx';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  Chip,
+  Dialog,
+  DialogContent,
+  Grid,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography
+} from '@mui/material';
 import SearchField from '../components/common/SearchField.jsx';
-import { tokens } from '../theme.js';
+import { ErrorCard, LoadingCard, EmptyCard } from '../components/common/StateViews.jsx';
 import { AppContext } from '../context/AppContext.jsx';
-import { currency } from '../data/mockData.js';
-import { filterRecords } from '../utils/searchUtils.js';
+import { api, unwrap } from '../api/client.js';
+import { useAsyncData } from '../hooks/useAsyncData.js';
+import { formatCurrency, sentenceCase } from '../utils/format.js';
+import { tokens } from '../theme.js';
 
-const statutStyle = {
-  'Occupée': { bg: tokens.color.navy, fg: '#fff' },
-  'Libre': { bg: tokens.color.successSoft, fg: tokens.color.success },
-  'Nettoyage': { bg: tokens.color.infoSoft, fg: tokens.color.info },
-  'Réservée': { bg: tokens.color.goldSoft, fg: tokens.color.navyDeep },
-  'Maintenance': { bg: tokens.color.warningSoft, fg: tokens.color.warning }
+const STATUS_COLORS = {
+  available: { bg: tokens.color.successSoft, fg: tokens.color.success },
+  occupied: { bg: tokens.color.navy, fg: '#fff' },
+  cleaning: { bg: tokens.color.infoSoft, fg: tokens.color.info },
+  reserved: { bg: tokens.color.goldSoft, fg: tokens.color.navyDeep },
+  maintenance: { bg: tokens.color.warningSoft, fg: tokens.color.warning }
 };
 
+function roomPrice(room) {
+  return room?.category?.basePrice || room?.price || 0;
+}
+
+async function loadRooms(isClient) {
+  const [roomsRes, categoriesRes] = await Promise.all([
+    api.get(isClient ? '/client-portal/rooms' : '/rooms'),
+    api.get('/rooms/categories').catch(() => ({ data: { data: [] } }))
+  ]);
+
+  return {
+    rooms: unwrap(roomsRes) || [],
+    categories: unwrap(categoriesRes) || []
+  };
+}
+
 export default function Rooms() {
-  const isClient = useContext(AppContext).userRole === 'Client';
-  const [statutFiltre, setStatutFiltre] = useState('Toutes');
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [openAddRoom, setOpenAddRoom] = useState(false);
-  const [bookingRoom, setBookingRoom] = useState(null);
-  const [bookingForm, setBookingForm] = useState({ arrivee: '2026-08-01', depart: '2026-08-03', personnes: 2 });
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [newRoom, setNewRoom] = useState({
-    id: 'R000',
-    nom: '',
-    etage: 1,
-    categorie: 'Standard',
-    statut: 'Libre',
-    prix: 120000,
-    image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=600&q=80'
-  });
-  const { rooms, setRooms, reserveRoom, setReservations, addAuditLog, addNotification } = useContext(AppContext);
-  const navigate = useNavigate();
+  const { authType, userRole } = useContext(AppContext);
+  const isClient = authType === 'client';
   const [searchParams, setSearchParams] = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState('');
-  const statuts = ['Toutes', 'Occupée', 'Libre', 'Nettoyage', 'Réservée', 'Maintenance'];
-  const rows = filterRecords(
-    rooms.filter((r) => (isClient ? r.statut === 'Libre' : true) && (statutFiltre === 'Toutes' || r.statut === statutFiltre)),
-    searchQuery,
-    ['nom', 'id', 'categorie', 'statut', 'client', 'surface', 'lits', 'description', 'equipements', 'promotion', 'etage', 'prix']
-  );
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [bookingRoom, setBookingRoom] = useState(null);
+  const [bookingForm, setBookingForm] = useState({ checkInDate: '', checkOutDate: '', adults: 2, children: 0, notes: '' });
+  const { data, loading, error, reload } = useAsyncData(() => loadRooms(isClient), [isClient]);
 
-  // Si l'utilisateur arrive depuis la Home client avec ?book=RoomName, on ouvre le dialogue de réservation
   useEffect(() => {
-    const bookParam = searchParams.get('book');
-    if (bookParam) {
-      const room = rooms.find((r) => r.nom === decodeURIComponent(bookParam));
-      if (room) {
-        setBookingRoom(room);
-      }
-      setSearchParams({}, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const bookId = searchParams.get('book');
+    if (!bookId || !data?.rooms?.length) return;
+    const room = data.rooms.find((item) => item._id === bookId || item.number === bookId);
+    if (room) setBookingRoom(room);
+    setSearchParams({}, { replace: true });
+  }, [data?.rooms, searchParams, setSearchParams]);
 
-  const nights = Math.max(1, Math.round((new Date(bookingForm.depart) - new Date(bookingForm.arrivee)) / (1000 * 60 * 60 * 24)));
-  const bookingTotal = bookingRoom ? bookingRoom.prix * nights : 0;
+  const filteredRooms = useMemo(() => (data?.rooms || []).filter((room) => {
+    if (statusFilter !== 'all' && room.status !== statusFilter) return false;
+    if (!query) return true;
+    const haystack = [room.number, room.name, room.description, room.floor, room.category?.name].join(' ').toLowerCase();
+    return haystack.includes(query.toLowerCase());
+  }), [data?.rooms, query, statusFilter]);
 
-  const openBooking = (room) => {
-    setBookingRoom(room);
-    setBookingForm({ arrivee: '2026-08-01', depart: '2026-08-03', personnes: 2 });
+  const canManageStatus = ['admin', 'receptionist', 'housekeeping'].includes(userRole);
+
+  const handleUpdateStatus = async (roomId, status) => {
+    await api.patch(`/rooms/${roomId}/status`, { status });
+    await reload();
   };
 
-  const confirmBooking = () => {
-    if (!bookingRoom) return;
-    const id = `RS-${Date.now().toString().slice(-5)}`;
-    setReservations((prev) => [
-      {
-        id,
-        client: 'M. Kanyinda Tshibola',
-        chambre: bookingRoom.nom,
-        arrivee: bookingForm.arrivee,
-        depart: bookingForm.depart,
-        statut: 'Confirmée',
-        canal: 'Web'
-      },
-      ...prev
-    ]);
-    setRooms((prev) => prev.map((r) => (r.id === bookingRoom.id ? { ...r, statut: 'Réservée', client: 'M. Kanyinda Tshibola' } : r)));
-    addAuditLog(`Réservation ${id} créée pour ${bookingRoom.nom}`, 'Réservations');
-    addNotification(`Réservation confirmée — ${bookingRoom.nom}`, 'M. Kanyinda Tshibola', 'Push + Email');
+  const handleBookRoom = async () => {
+    await api.post('/client-portal/book-room', {
+      room: bookingRoom._id,
+      ...bookingForm,
+      source: 'web'
+    });
     setBookingRoom(null);
-    setSnackbar({ open: true, message: `Réservation ${id} confirmée pour ${bookingRoom.nom}.`, severity: 'success' });
-    navigate('/client/reservations');
+    await reload();
   };
+
+  if (loading) return <LoadingCard message="Chargement des chambres…" />;
+  if (error) return <ErrorCard error={error} onRetry={reload} />;
 
   return (
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5, flexWrap: 'wrap', gap: 1.5 }}>
-        {isClient ? (
-          <Box>
-            <Typography variant="h6">Nos chambres & suites</Typography>
-            <Typography variant="body2" color="text.secondary">Disponibilité en temps réel</Typography>
-          </Box>
-        ) : (
-          <ToggleButtonGroup
-            value={statutFiltre}
-            exclusive
-            onChange={(_, v) => v && setStatutFiltre(v)}
-            size="small"
-            sx={{ bgcolor: '#fff', border: `1px solid ${tokens.color.line}`, borderRadius: '10px', p: 0.4 }}
-          >
-            {statuts.map((s) => (
-              <ToggleButton key={s} value={s} sx={{ border: 0, borderRadius: '8px !important', px: 2, textTransform: 'none', fontWeight: 600 }}>
-                {s}
-              </ToggleButton>
+      {isClient ? (
+        <Alert severity="info" sx={{ mb: 2.5 }}>
+          Les chambres proviennent de <strong>/api/client-portal/rooms</strong>. Les réservations client utilisent <strong>/api/client-portal/book-room</strong>.
+        </Alert>
+      ) : null}
+
+      <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ md: 'center' }} sx={{ mb: 2.5, gap: 1.5 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2}>
+          <SearchField value={query} onChange={setQuery} placeholder="Rechercher une chambre, catégorie, étage…" sx={{ minWidth: { sm: 280 } }} />
+          <TextField select size="small" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} sx={{ minWidth: 180 }}>
+            <MenuItem value="all">Tous les statuts</MenuItem>
+            {Object.keys(STATUS_COLORS).map((status) => (
+              <MenuItem key={status} value={status}>{sentenceCase(status)}</MenuItem>
             ))}
-          </ToggleButtonGroup>
-        )}
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems="center">
-          <SearchField
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Rechercher par nom, catégorie, statut, client, prix…"
-            sx={{ minWidth: { sm: 260 } }}
-          />
-          {!isClient && (
-            <Button variant="contained" color="secondary" sx={{ boxShadow: 'none' }} onClick={() => setOpenAddRoom(true)}>+ Ajouter une chambre</Button>
-          )}
+          </TextField>
         </Stack>
+        <Chip label={`${filteredRooms.length} chambre(s)`} />
       </Stack>
 
-      <Dialog open={openAddRoom} onClose={() => setOpenAddRoom(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
-        <DialogContent sx={{ p: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>Ajouter une chambre</Typography>
-          <Stack spacing={2}>
-            <TextField
-              label="Nom de la chambre"
-              value={newRoom.nom}
-              onChange={(e) => setNewRoom((prev) => ({ ...prev, nom: e.target.value }))}
-              fullWidth
-              size="small"
-            />
-            <TextField
-              label="Étage"
-              type="number"
-              value={newRoom.etage}
-              onChange={(e) => setNewRoom((prev) => ({ ...prev, etage: Number(e.target.value) }))}
-              fullWidth
-              size="small"
-            />
-            <TextField
-              label="Catégorie"
-              select
-              fullWidth
-              size="small"
-              value={newRoom.categorie}
-              onChange={(e) => setNewRoom((prev) => ({ ...prev, categorie: e.target.value }))}
-            >
-              {['Standard', 'Deluxe', 'Suite', 'Familiale'].map((option) => (
-                <MenuItem key={option} value={option}>{option}</MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="Prix par nuit"
-              type="number"
-              value={newRoom.prix}
-              onChange={(e) => setNewRoom((prev) => ({ ...prev, prix: Number(e.target.value) }))}
-              fullWidth
-              size="small"
-            />
-            <TextField
-              label="Statut"
-              select
-              fullWidth
-              size="small"
-              value={newRoom.statut}
-              onChange={(e) => setNewRoom((prev) => ({ ...prev, statut: e.target.value }))}
-            >
-              {['Libre', 'Occupée', 'Réservée', 'Nettoyage', 'Maintenance'].map((option) => (
-                <MenuItem key={option} value={option}>{option}</MenuItem>
-              ))}
-            </TextField>
-            <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-              <Button fullWidth variant="outlined" onClick={() => setOpenAddRoom(false)}>Annuler</Button>
-              <Button
-                fullWidth
-                variant="contained"
-                color="secondary"
-                onClick={() => {
-                  if (!newRoom.nom.trim()) return;
-                  setRooms((prev) => [
-                    ...prev,
-                    { ...newRoom, id: `R${Math.floor(Math.random() * 900 + 100)}` }
-                  ]);
-                  setNewRoom({
-                    id: 'R000',
-                    nom: '',
-                    etage: 1,
-                    categorie: 'Standard',
-                    statut: 'Libre',
-                    prix: 120000,
-                    image: 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=600&q=80'
-                  });
-                  setOpenAddRoom(false);
-                }}
-              >
-                Ajouter
-              </Button>
-            </Stack>
-          </Stack>
-        </DialogContent>
-      </Dialog>
+      {!filteredRooms.length ? (
+        <EmptyCard title="Aucune chambre" message="Aucune chambre ne correspond aux filtres appliqués." />
+      ) : (
+        <Grid container spacing={2.5}>
+          {filteredRooms.map((room) => {
+            const color = STATUS_COLORS[room.status] || { bg: tokens.color.line, fg: tokens.color.ink };
+            return (
+              <Grid item xs={12} sm={6} lg={4} key={room._id}>
+                <Card sx={{ p: 2.5, height: '100%' }}>
+                  <Stack spacing={1.4} sx={{ height: '100%' }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                      <Box>
+                        <Typography variant="overline">Chambre {room.number || '—'}</Typography>
+                        <Typography variant="h6">{room.name || room.category?.name || 'Sans libellé'}</Typography>
+                      </Box>
+                      <Chip label={sentenceCase(room.status)} sx={{ bgcolor: color.bg, color: color.fg, fontWeight: 700 }} />
+                    </Stack>
 
-      <Grid container spacing={2.5}>
-        {rows.map((room) => (
-          <Grid item xs={12} sm={6} lg={4} key={room.id}>
-            <Card sx={{ overflow: 'hidden' }}>
-              <QRFrame radius={0}>
-                <Box sx={{ position: 'relative', height: 170 }}>
-                  <Box component="img" src={room.image} alt={room.nom} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  {!isClient && (
-                    <Chip
-                      label={room.statut}
-                      size="small"
-                      sx={{ position: 'absolute', top: 10, right: 10, fontWeight: 700, bgcolor: statutStyle[room.statut].bg, color: statutStyle[room.statut].fg }}
-                    />
-                  )}
-                  <Box sx={{ position: 'absolute', bottom: 10, right: 10, bgcolor: 'rgba(11,37,69,0.75)', borderRadius: '8px', p: 0.6, display: 'flex' }}>
-                    <QrCode2RoundedIcon sx={{ color: '#fff', fontSize: 20 }} />
-                  </Box>
-                  {room.promotion && (
-                    <Chip
-                      label={room.promotion}
-                      size="small"
-                      sx={{ position: 'absolute', bottom: 10, left: 10, fontWeight: 700, bgcolor: tokens.color.gold, color: tokens.color.navyDeep }}
-                    />
-                  )}
-                </Box>
-              </QRFrame>
+                    <Typography color="text.secondary">{room.description || room.category?.description || 'Aucune description fournie.'}</Typography>
+                    <Typography><strong>Catégorie:</strong> {room.category?.name || '—'}</Typography>
+                    <Typography><strong>Étage:</strong> {room.floor ?? '—'}</Typography>
+                    <Typography><strong>Prix:</strong> {formatCurrency(roomPrice(room))}/nuit</Typography>
+                    <Typography><strong>Capacité:</strong> {room.category?.capacity || room.capacity || '—'} personne(s)</Typography>
 
-              <Box sx={{ p: 2.2 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                  <Box>
-                    <Typography sx={{ fontFamily: tokens.font.mono, fontSize: 11, color: 'text.secondary' }}>{room.id}</Typography>
-                    <Typography variant="h6" sx={{ fontSize: 17 }}>{room.nom}</Typography>
-                  </Box>
-                  <Typography sx={{ fontFamily: tokens.font.mono, fontWeight: 600, color: tokens.color.navy }}>
-                    {currency(room.prix)}<Typography component="span" variant="caption" color="text.secondary">/nuit</Typography>
-                  </Typography>
-                </Stack>
-
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                  <LayersRoundedIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
-                  <Typography variant="caption" color="text.secondary">Étage {room.etage} · {room.categorie}</Typography>
-                </Stack>
-
-                {room.client && !isClient && (
-                  <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic', color: tokens.color.navySoft }}>
-                    Occupée par {room.client}
-                  </Typography>
-                )}
-
-                {isClient ? (
-                  <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                    <Button size="small" variant="outlined" fullWidth sx={{ borderColor: tokens.color.line, color: 'text.primary' }} onClick={() => setSelectedRoom(room)}>Détails</Button>
-                    <Button size="small" variant="contained" color="secondary" fullWidth sx={{ boxShadow: 'none' }} onClick={() => openBooking(room)}>
-                      Réserver cette chambre
-                    </Button>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 'auto' }}>
+                      {isClient ? (
+                        <Button variant="contained" color="secondary" onClick={() => setBookingRoom(room)} disabled={room.status !== 'available'}>
+                          Réserver
+                        </Button>
+                      ) : canManageStatus ? (
+                        <TextField
+                          select
+                          size="small"
+                          value={room.status}
+                          onChange={(event) => handleUpdateStatus(room._id, event.target.value)}
+                          sx={{ minWidth: 180 }}
+                        >
+                          {Object.keys(STATUS_COLORS).map((status) => (
+                            <MenuItem key={status} value={status}>{sentenceCase(status)}</MenuItem>
+                          ))}
+                        </TextField>
+                      ) : (
+                        <Chip label="Lecture seule" variant="outlined" />
+                      )}
+                    </Stack>
                   </Stack>
-                ) : (
-                  <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-                    <Button size="small" variant="outlined" fullWidth sx={{ borderColor: tokens.color.line, color: 'text.primary' }} onClick={() => setSelectedRoom(room)}>Détails</Button>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      fullWidth
-                      sx={{ boxShadow: 'none' }}
-                      disabled={room.statut !== 'Libre'}
-                      onClick={() => {
-                        reserveRoom(room);
-                        navigate('/reservations');
-                      }}
-                    >
-                      Réserver cette chambre
-                    </Button>
-                  </Stack>
-                )}
-              </Box>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      )}
 
-      <RoomDetailDialog room={selectedRoom} open={Boolean(selectedRoom)} onClose={() => setSelectedRoom(null)} />
-
-      {/* Dialogue de réservation client */}
-      <Dialog open={Boolean(bookingRoom)} onClose={() => setBookingRoom(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
+      <Dialog open={Boolean(bookingRoom)} onClose={() => setBookingRoom(null)} maxWidth="sm" fullWidth>
         <DialogContent sx={{ p: 3 }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>Réserver — {bookingRoom?.nom}</Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-            {currency(bookingRoom?.prix || 0)} / nuit · {bookingRoom?.categorie} · Étage {bookingRoom?.etage}
-          </Typography>
+          <Typography variant="h6" sx={{ mb: 2 }}>Réserver la chambre {bookingRoom?.number}</Typography>
           <Stack spacing={2}>
+            <TextField label="Arrivée" type="date" InputLabelProps={{ shrink: true }} value={bookingForm.checkInDate} onChange={(event) => setBookingForm((prev) => ({ ...prev, checkInDate: event.target.value }))} />
+            <TextField label="Départ" type="date" InputLabelProps={{ shrink: true }} value={bookingForm.checkOutDate} onChange={(event) => setBookingForm((prev) => ({ ...prev, checkOutDate: event.target.value }))} />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label="Arrivée"
-                type="date"
-                fullWidth
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                value={bookingForm.arrivee}
-                onChange={(e) => setBookingForm((prev) => ({ ...prev, arrivee: e.target.value }))}
-              />
-              <TextField
-                label="Départ"
-                type="date"
-                fullWidth
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                value={bookingForm.depart}
-                onChange={(e) => setBookingForm((prev) => ({ ...prev, depart: e.target.value }))}
-              />
+              <TextField label="Adultes" type="number" value={bookingForm.adults} onChange={(event) => setBookingForm((prev) => ({ ...prev, adults: Number(event.target.value) }))} fullWidth />
+              <TextField label="Enfants" type="number" value={bookingForm.children} onChange={(event) => setBookingForm((prev) => ({ ...prev, children: Number(event.target.value) }))} fullWidth />
             </Stack>
-            <TextField
-              label="Personnes"
-              type="number"
-              fullWidth
-              size="small"
-              value={bookingForm.personnes}
-              onChange={(e) => setBookingForm((prev) => ({ ...prev, personnes: Math.max(1, Number(e.target.value)) }))}
-            />
-            <Box sx={{ p: 2, borderRadius: '14px', bgcolor: tokens.color.cream }}>
-              <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                <Typography variant="body2" color="text.secondary">{nights} nuit(s)</Typography>
-                <Typography variant="body2" sx={{ fontFamily: tokens.font.mono }}>{currency(nights * (bookingRoom?.prix || 0))}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography sx={{ fontWeight: 700 }}>Total</Typography>
-                <Typography sx={{ fontWeight: 700, fontFamily: tokens.font.mono, color: tokens.color.navy }}>{currency(bookingTotal)}</Typography>
-              </Stack>
-            </Box>
-            <Stack direction="row" spacing={2}>
-              <Button fullWidth variant="outlined" onClick={() => setBookingRoom(null)}>Annuler</Button>
-              <Button fullWidth variant="contained" color="secondary" onClick={confirmBooking}>Confirmer la réservation</Button>
+            <TextField label="Notes" multiline minRows={3} value={bookingForm.notes} onChange={(event) => setBookingForm((prev) => ({ ...prev, notes: event.target.value }))} />
+            <Stack direction="row" spacing={1.2} justifyContent="flex-end">
+              <Button variant="outlined" onClick={() => setBookingRoom(null)}>Annuler</Button>
+              <Button variant="contained" color="secondary" onClick={handleBookRoom}>Confirmer</Button>
             </Stack>
           </Stack>
         </DialogContent>
       </Dialog>
-
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar((p) => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity={snackbar.severity} variant="filled" onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>{snackbar.message}</Alert>
-      </Snackbar>
     </Box>
   );
 }

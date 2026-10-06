@@ -1,180 +1,110 @@
-import { useState } from 'react';
-import {
-  Grid, Card, Box, Typography, Stack, Chip, Avatar, Tabs, Tab,
-  Table, TableHead, TableRow, TableCell, TableBody
-} from '@mui/material';
-import SearchField from '../components/common/SearchField.jsx';
+import { Alert, Box, Card, Chip, Grid, List, ListItem, ListItemText, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { api, unwrap } from '../api/client.js';
+import { useAsyncData } from '../hooks/useAsyncData.js';
+import { EmptyCard, ErrorCard, LoadingCard } from '../components/common/StateViews.jsx';
+import { formatCurrency, formatDate, fullName, sentenceCase } from '../utils/format.js';
 import { tokens } from '../theme.js';
-import { employees, presenceLog, payroll, leaveRequests, currency } from '../data/mockData.js';
-import { filterRecords } from '../utils/searchUtils.js';
 
-const statutStyle = {
-  Présent: { bg: tokens.color.successSoft, fg: tokens.color.success },
-  Congé: { bg: tokens.color.infoSoft, fg: tokens.color.info },
-  Absent: { bg: tokens.color.dangerSoft, fg: tokens.color.danger },
-  'En service': { bg: tokens.color.successSoft, fg: tokens.color.success },
-  'Terminé': { bg: tokens.color.line, fg: 'text.secondary' },
-  'Absent non justifié': { bg: tokens.color.dangerSoft, fg: tokens.color.danger },
-  'Validé': { bg: tokens.color.successSoft, fg: tokens.color.success },
-  'En attente': { bg: tokens.color.warningSoft, fg: tokens.color.warning }
-};
+async function safeGet(url) {
+  try {
+    return unwrap(await api.get(url));
+  } catch {
+    return [];
+  }
+}
+
+async function loadHr() {
+  const [employees, attendance, leaves, payroll] = await Promise.all([
+    safeGet('/hr/employees'),
+    safeGet('/hr/attendance'),
+    safeGet('/hr/leaves'),
+    safeGet('/hr/payroll')
+  ]);
+  return { employees, attendance, leaves, payroll };
+}
 
 export default function HR() {
-  const [tab, setTab] = useState('effectif');
-  const [searchQuery, setSearchQuery] = useState('');
-  const present = employees.filter((e) => e.statut === 'Présent').length;
+  const { data, loading, error, reload } = useAsyncData(loadHr, []);
 
-  const employeesRows = filterRecords(employees, searchQuery, ['nom', 'poste', 'departement', 'statut', 'id', 'contrat', 'dateEmbauche']);
-  const presenceRows = filterRecords(presenceLog, searchQuery, ['employe', 'lieu', 'statut', 'arrivee', 'depart']);
-  const payrollRows = filterRecords(payroll, searchQuery, ['employe', 'salaireBase', 'primes', 'deductions', 'net']);
-  const leaveRows = filterRecords(leaveRequests, searchQuery, ['employe', 'type', 'du', 'au', 'statut']);
+  if (loading) return <LoadingCard message="Chargement des données RH…" />;
+  if (error) return <ErrorCard error={error} onRetry={reload} />;
 
   return (
     <Box>
-      <Grid container spacing={2.5} sx={{ mb: 0.5 }}>
-        <Grid item xs={12} sm={4}>
-          <Card sx={{ p: 2.5 }}>
-            <Typography variant="overline" color="text.secondary">Effectif total</Typography>
-            <Typography variant="h4">{employees.length}</Typography>
-          </Card>
+      <Alert severity="info" sx={{ mb: 2.5 }}>
+        Employés, présence, congés et paie sont chargés depuis le backend. Selon le rôle, certaines sections peuvent revenir vides si l'API refuse l'accès.
+      </Alert>
+
+      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+        <Grid item xs={12} md={3}><Card sx={{ p: 3 }}><Typography variant="h6">Employés</Typography><Typography variant="h3">{data?.employees?.length || 0}</Typography></Card></Grid>
+        <Grid item xs={12} md={3}><Card sx={{ p: 3 }}><Typography variant="h6">Présences</Typography><Typography variant="h3">{data?.attendance?.length || 0}</Typography></Card></Grid>
+        <Grid item xs={12} md={3}><Card sx={{ p: 3 }}><Typography variant="h6">Congés</Typography><Typography variant="h3">{data?.leaves?.length || 0}</Typography></Card></Grid>
+        <Grid item xs={12} md={3}><Card sx={{ p: 3 }}><Typography variant="h6">Paies</Typography><Typography variant="h3">{data?.payroll?.length || 0}</Typography></Card></Grid>
+      </Grid>
+
+      <Grid container spacing={2.5}>
+        <Grid item xs={12} lg={7}>
+          {(data?.employees || []).length ? (
+            <Card sx={{ overflowX: 'auto' }}>
+              <Table sx={{ minWidth: 860 }}>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: tokens.color.cream }}>
+                    {['Employé', 'Département', 'Poste', 'Contrat', 'Salaire', 'Statut'].map((label) => (
+                      <TableCell key={label} sx={{ fontFamily: tokens.font.mono, fontSize: 11, textTransform: 'uppercase', color: 'text.secondary' }}>{label}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {data.employees.map((employee) => (
+                    <TableRow key={employee._id} hover>
+                      <TableCell>{fullName(employee.user)}</TableCell>
+                      <TableCell>{employee.department || '—'}</TableCell>
+                      <TableCell>{employee.position || '—'}</TableCell>
+                      <TableCell>{sentenceCase(employee.contractType)}</TableCell>
+                      <TableCell>{formatCurrency(employee.baseSalary)}</TableCell>
+                      <TableCell><Chip label={sentenceCase(employee.status || 'active')} size="small" /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          ) : (
+            <EmptyCard title="Aucun employé" message="Aucun dossier employé accessible pour ce rôle." />
+          )}
         </Grid>
-        <Grid item xs={12} sm={4}>
-          <Card sx={{ p: 2.5 }}>
-            <Typography variant="overline" color="text.secondary">Présents aujourd’hui</Typography>
-            <Typography variant="h4" sx={{ color: tokens.color.success }}>{present}</Typography>
+
+        <Grid item xs={12} lg={5}>
+          <Card sx={{ p: 3, mb: 2.5 }}>
+            <Typography variant="h6">Présence récente</Typography>
+            {(data?.attendance || []).length ? (
+              <List disablePadding>
+                {data.attendance.slice(0, 8).map((entry) => (
+                  <ListItem key={entry._id} disableGutters divider>
+                    <ListItemText primary={entry.employee?.employeeCode || 'Employé'} secondary={`Entrée ${formatDate(entry.checkIn)}${entry.checkOut ? ` · Sortie ${formatDate(entry.checkOut)}` : ' · En cours'}`} />
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography color="text.secondary">Aucun pointage visible.</Typography>
+            )}
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <Card sx={{ p: 2.5 }}>
-            <Typography variant="overline" color="text.secondary">Pointage</Typography>
-            <Typography variant="h4" sx={{ color: tokens.color.navy }}>Géolocalisé</Typography>
+
+          <Card sx={{ p: 3 }}>
+            <Typography variant="h6">Dernières paies</Typography>
+            {(data?.payroll || []).length ? (
+              <List disablePadding>
+                {data.payroll.slice(0, 8).map((entry) => (
+                  <ListItem key={entry._id} disableGutters divider>
+                    <ListItemText primary={`${fullName(entry.employee?.user)} · ${entry.period}`} secondary={`${formatCurrency(entry.netSalary)} · ${sentenceCase(entry.status)}`} />
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <Typography color="text.secondary">Aucune fiche de paie accessible.</Typography>
+            )}
           </Card>
         </Grid>
       </Grid>
-
-      <SearchField
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder="Rechercher un employé par nom, poste, département, statut, contrat…"
-        sx={{ mt: 2.5, mb: 2, maxWidth: 420 }}
-      />
-
-<Tabs
-        value={tab}
-        onChange={(_, v) => setTab(v)}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{ mb: 2, minHeight: 36, '& .MuiTab-root': { minHeight: 36, textTransform: 'none', fontWeight: 600, fontSize: 13.5 } }}
-      >
-        <Tab label="Effectif" value="effectif" />
-        <Tab label="Présence" value="presence" />
-        <Tab label="Paie" value="paie" />
-        <Tab label="Congés" value="conges" />
-      </Tabs>
-
-      {tab === 'effectif' && (
-        <Grid container spacing={2.5}>
-          {employeesRows.map((e) => (
-            <Grid item xs={12} sm={6} md={4} key={e.id}>
-              <Card sx={{ p: 2.4 }}>
-                <Stack direction="row" spacing={1.6} alignItems="center">
-                  <Avatar src={e.photo} sx={{ width: 52, height: 52 }} />
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography sx={{ fontWeight: 600, fontSize: 14.5 }}>{e.nom}</Typography>
-                    <Typography variant="caption" color="text.secondary">{e.poste} · {e.departement}</Typography>
-                  </Box>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.6 }}>
-                  <Chip label={e.contrat} size="small" sx={{ fontFamily: tokens.font.mono, bgcolor: tokens.color.cream }} />
-                  <Chip label={e.statut} size="small" sx={{ fontWeight: 700, bgcolor: statutStyle[e.statut].bg, color: statutStyle[e.statut].fg }} />
-                </Stack>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                  Embauché le {new Date(e.dateEmbauche).toLocaleDateString('fr-FR')}
-                </Typography>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
-      {tab === 'presence' && (
-        <Card sx={{ overflowX: 'auto' }}>
-          <Table sx={{ minWidth: 620 }}>
-            <TableHead>
-              <TableRow sx={{ bgcolor: tokens.color.cream }}>
-                {['Employé', 'Arrivée', 'Départ', 'Lieu (géolocalisation)', 'Statut'].map((h) => (
-                  <TableCell key={h} sx={{ fontFamily: tokens.font.mono, fontSize: 11, color: 'text.secondary', textTransform: 'uppercase' }}>{h}</TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {presenceRows.map((p) => (
-                <TableRow key={p.id} hover>
-                  <TableCell sx={{ fontWeight: 500 }}>{p.employe}</TableCell>
-                  <TableCell sx={{ fontFamily: tokens.font.mono }}>{p.arrivee}</TableCell>
-                  <TableCell sx={{ fontFamily: tokens.font.mono }}>{p.depart}</TableCell>
-                  <TableCell>{p.lieu}</TableCell>
-                  <TableCell>
-                    <Chip label={p.statut} size="small" sx={{ fontWeight: 700, bgcolor: statutStyle[p.statut]?.bg, color: statutStyle[p.statut]?.fg }} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
-
-      {tab === 'paie' && (
-        <Card sx={{ overflowX: 'auto' }}>
-          <Table sx={{ minWidth: 600 }}>
-            <TableHead>
-              <TableRow sx={{ bgcolor: tokens.color.cream }}>
-                {['Employé', 'Salaire de base', 'Primes', 'Déductions', 'Net à payer'].map((h) => (
-                  <TableCell key={h} sx={{ fontFamily: tokens.font.mono, fontSize: 11, color: 'text.secondary', textTransform: 'uppercase' }}>{h}</TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {payrollRows.map((p) => (
-                <TableRow key={p.id} hover>
-                  <TableCell sx={{ fontWeight: 500 }}>{p.employe}</TableCell>
-                  <TableCell sx={{ fontFamily: tokens.font.mono }}>{currency(p.salaireBase)}</TableCell>
-                  <TableCell sx={{ fontFamily: tokens.font.mono, color: tokens.color.success }}>+{currency(p.primes)}</TableCell>
-                  <TableCell sx={{ fontFamily: tokens.font.mono, color: tokens.color.danger }}>-{currency(p.deductions)}</TableCell>
-                  <TableCell sx={{ fontFamily: tokens.font.mono, fontWeight: 700 }}>{currency(p.net)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
-
-      {tab === 'conges' && (
-        <Card sx={{ overflowX: 'auto' }}>
-          <Table sx={{ minWidth: 560 }}>
-            <TableHead>
-              <TableRow sx={{ bgcolor: tokens.color.cream }}>
-                {['Employé', 'Type', 'Du', 'Au', 'Statut'].map((h) => (
-                  <TableCell key={h} sx={{ fontFamily: tokens.font.mono, fontSize: 11, color: 'text.secondary', textTransform: 'uppercase' }}>{h}</TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {leaveRows.map((l) => (
-                <TableRow key={l.id} hover>
-                  <TableCell sx={{ fontWeight: 500 }}>{l.employe}</TableCell>
-                  <TableCell>{l.type}</TableCell>
-                  <TableCell>{new Date(l.du).toLocaleDateString('fr-FR')}</TableCell>
-                  <TableCell>{new Date(l.au).toLocaleDateString('fr-FR')}</TableCell>
-                  <TableCell>
-                    <Chip label={l.statut} size="small" sx={{ fontWeight: 700, bgcolor: statutStyle[l.statut]?.bg, color: statutStyle[l.statut]?.fg }} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
-      )}
     </Box>
   );
 }

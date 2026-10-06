@@ -28,7 +28,7 @@ export default function CartSummary() {
     if (cartItems.length === 0) return;
     const id = `PAY-${Date.now().toString().slice(-6)}`;
     const details = cartItems.map((i) => `${i.nom} x${i.quantite}`).join(', ');
-    const isClientRole = userRole === 'Client';
+    const isClientRole = userRole === 'client';
     setPayments((prev) => [
       {
         id,

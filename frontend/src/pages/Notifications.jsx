@@ -1,56 +1,50 @@
-import { useState } from 'react';
-import { Card, Typography, Stack, Chip, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
-import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
-import SearchField from '../components/common/SearchField.jsx';
-import { tokens } from '../theme.js';
-import { notifications } from '../data/mockData.js';
-import { filterRecords } from '../utils/searchUtils.js';
-
-const statutStyle = {
-  'Envoyée': { bg: tokens.color.infoSoft, fg: tokens.color.info },
-  'Lue': { bg: tokens.color.successSoft, fg: tokens.color.success },
-  'En attente': { bg: tokens.color.warningSoft, fg: tokens.color.warning }
-};
+import { useContext } from 'react';
+import { Alert, Box, Button, Card, Chip, List, ListItem, ListItemText, Stack, Typography } from '@mui/material';
+import { AppContext } from '../context/AppContext.jsx';
+import { EmptyCard } from '../components/common/StateViews.jsx';
+import { formatDateTime, sentenceCase } from '../utils/format.js';
+import { api } from '../api/client.js';
 
 export default function Notifications() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const rows = filterRecords(notifications, searchQuery, ['titre', 'destinataire', 'canal', 'heure', 'statut', 'detail', 'type']);
+  const { notifications, fetchNotifications, markNotificationRead } = useContext(AppContext);
+
+  const markAll = async () => {
+    await api.patch('/notifications/read-all');
+    await fetchNotifications();
+  };
+
   return (
-    <Card sx={{ overflowX: 'auto' }}>
-      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{ p: 3, pb: 1.5, flexWrap: 'wrap', gap: 1.5 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <NotificationsRoundedIcon sx={{ color: tokens.color.gold }} />
-          <Typography variant="h6">Journal des notifications push</Typography>
-        </Stack>
-        <SearchField
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Rechercher par titre, destinataire, canal…"
-          sx={{ minWidth: { sm: 260 } }}
-        />
+    <Box>
+      <Alert severity="info" sx={{ mb: 2.5 }}>
+        Notifications temps réel + historiques via <strong>/api/notifications</strong> et Socket.io (<strong>notification</strong> event).
+      </Alert>
+
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
+        <Typography variant="h6">{notifications.length} notification(s)</Typography>
+        <Button variant="outlined" onClick={markAll} disabled={!notifications.some((item) => !item.isRead)}>Tout marquer comme lu</Button>
       </Stack>
-      <Table sx={{ minWidth: 640 }}>
-        <TableHead>
-          <TableRow sx={{ bgcolor: tokens.color.cream }}>
-            {['Titre', 'Destinataire', 'Canal', 'Heure', 'Statut'].map((h) => (
-              <TableCell key={h} sx={{ fontFamily: tokens.font.mono, fontSize: 11, color: 'text.secondary', textTransform: 'uppercase' }}>{h}</TableCell>
+
+      {!notifications.length ? (
+        <EmptyCard title="Aucune notification" message="Aucune notification n'a été reçue pour le moment." />
+      ) : (
+        <Card sx={{ p: 2 }}>
+          <List disablePadding>
+            {notifications.map((item) => (
+              <ListItem key={item.id} divider secondaryAction={!item.isRead ? <Button size="small" onClick={() => markNotificationRead(item.id)}>Marquer lu</Button> : null}>
+                <ListItemText
+                  primary={
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography sx={{ fontWeight: 600 }}>{item.title || item.titre}</Typography>
+                      <Chip label={item.isRead ? 'Lue' : 'Non lue'} size="small" color={item.isRead ? 'default' : 'warning'} />
+                    </Stack>
+                  }
+                  secondary={`${sentenceCase(item.type || 'general')} · ${item.message || item.destinataire || ''} · ${formatDateTime(item.createdAt || item.heure)}`}
+                />
+              </ListItem>
             ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {rows.map((n) => (
-            <TableRow key={n.id} hover>
-              <TableCell sx={{ fontWeight: 500 }}>{n.titre}</TableCell>
-              <TableCell>{n.destinataire}</TableCell>
-              <TableCell>{n.canal}</TableCell>
-              <TableCell sx={{ fontFamily: tokens.font.mono }}>{n.heure}</TableCell>
-              <TableCell>
-                <Chip label={n.statut} size="small" sx={{ fontWeight: 700, bgcolor: statutStyle[n.statut].bg, color: statutStyle[n.statut].fg }} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
+          </List>
+        </Card>
+      )}
+    </Box>
   );
 }

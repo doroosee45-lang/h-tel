@@ -1,72 +1,43 @@
-import { useState } from 'react';
-import { Grid, Card, Box, Typography, Stack, Chip } from '@mui/material';
-import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded';
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
-import CampaignRoundedIcon from '@mui/icons-material/CampaignRounded';
-import SearchField from '../../components/common/SearchField.jsx';
-import { tokens } from '../../theme.js';
-import { clientNotifications } from '../../data/mockData.js';
-import { filterRecords } from '../../utils/searchUtils.js';
-
-const typeStyle = {
-  succes: { bg: tokens.color.successSoft, fg: tokens.color.success, icon: <CheckCircleRoundedIcon sx={{ fontSize: 18 }} /> },
-  info: { bg: tokens.color.infoSoft, fg: tokens.color.info, icon: <InfoRoundedIcon sx={{ fontSize: 18 }} /> },
-  promo: { bg: tokens.color.goldSoft, fg: tokens.color.navyDeep, icon: <CampaignRoundedIcon sx={{ fontSize: 18 }} /> }
-};
+import { useContext } from 'react';
+import { Alert, Box, Button, Card, Chip, List, ListItem, ListItemText, Stack, Typography } from '@mui/material';
+import { AppContext } from '../../context/AppContext.jsx';
+import { EmptyCard } from '../../components/common/StateViews.jsx';
+import { formatDateTime, sentenceCase } from '../../utils/format.js';
 
 export default function ClientNotifications() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const rows = filterRecords(clientNotifications, searchQuery, ['titre', 'detail', 'type', 'heure']);
+  const { notifications, markNotificationRead } = useContext(AppContext);
+
   return (
     <Box>
-      <Card sx={{ p: 3, mb: 2.5, bgcolor: tokens.color.navy, color: '#fff' }}>
-        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between" sx={{ flexWrap: 'wrap', gap: 1.5 }}>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Box sx={{ width: 52, height: 52, borderRadius: '13px', bgcolor: tokens.color.gold, color: tokens.color.navyDeep, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <NotificationsRoundedIcon />
-            </Box>
-            <Box>
-              <Typography variant="h5">Notifications</Typography>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                Confirmations, paiements reçus, chambre prête et promotions personnalisées.
-              </Typography>
-            </Box>
-          </Stack>
-          <SearchField
-            value={searchQuery}
-            onChange={setSearchQuery}
-            placeholder="Rechercher une notification…"
-            sx={{ minWidth: { sm: 240 } }}
-          />
-        </Stack>
-      </Card>
+      <Alert severity="info" sx={{ mb: 2.5 }}>
+        Notifications client récupérées via <strong>/api/client-portal/my-notifications</strong> et mises à jour en temps réel via Socket.io.
+      </Alert>
 
-      <Grid container spacing={2}>
-        {rows.map((n) => {
-          const st = typeStyle[n.type] || typeStyle.info;
-          return (
-            <Grid item xs={12} md={6} key={n.id}>
-              <Card sx={{ p: 2.6, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                <Box sx={{ width: 44, height: 44, borderRadius: '11px', bgcolor: st.bg, color: st.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {st.icon}
-                </Box>
-                <Box sx={{ flex: 1 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography sx={{ fontWeight: 700, fontSize: 14.5 }}>{n.titre}</Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontFamily: tokens.font.mono }}>{n.heure}</Typography>
-                  </Stack>
-                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13, mt: 0.5, lineHeight: 1.6 }}>
-                    {n.detail}
-                  </Typography>
-                  <Chip label={n.type === 'promo' ? 'Promotion' : n.type === 'succes' ? 'Confirmation' : 'Information'} size="small" sx={{ mt: 1.2, fontWeight: 600, fontSize: 10.5, bgcolor: st.bg, color: st.fg }} />
-                </Box>
-              </Card>
-            </Grid>
-          );
-        })}
-      </Grid>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
+        <Typography variant="h6">{notifications.length} notification(s)</Typography>
+      </Stack>
+
+      {!notifications.length ? (
+        <EmptyCard title="Aucune notification" message="Aucune notification client n'est disponible." />
+      ) : (
+        <Card sx={{ p: 2 }}>
+          <List disablePadding>
+            {notifications.map((item) => (
+              <ListItem key={item.id} divider secondaryAction={!item.isRead ? <Button size="small" onClick={() => markNotificationRead(item.id)}>Marquer lu</Button> : null}>
+                <ListItemText
+                  primary={
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography sx={{ fontWeight: 600 }}>{item.title || item.titre}</Typography>
+                      <Chip label={item.isRead ? 'Lue' : 'Non lue'} size="small" color={item.isRead ? 'default' : 'warning'} />
+                    </Stack>
+                  }
+                  secondary={`${sentenceCase(item.type || 'general')} · ${item.message || ''} · ${formatDateTime(item.createdAt || item.heure)}`}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Card>
+      )}
     </Box>
   );
 }
-

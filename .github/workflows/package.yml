@@ -1,0 +1,45 @@
+name: Package Smart Hotel 360
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Backend - install & vérification
+        working-directory: backend
+        run: |
+          npm ci
+          npm run check
+
+      - name: Frontend - install & build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Mobile - installation des dépendances
+        working-directory: mobile
+        run: npm ci
+
+      - name: Génération du ZIP
+        run: |
+          sudo apt-get install -y zip >/dev/null
+          bash scripts/build-zip.sh smart-hotel-360.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smart-hotel-360
+          path: smart-hotel-360.zip

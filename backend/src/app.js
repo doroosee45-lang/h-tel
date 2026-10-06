@@ -33,13 +33,16 @@ const paymentGatewayRoutes = require("./routes/paymentGatewayRoutes");
 const chatbotRoutes = require("./routes/chatbotRoutes");
 const syncRoutes = require("./routes/syncRoutes");
 const lockRoutes = require("./routes/lockRoutes");
+const clientPortalRoutes = require("./routes/clientPortalRoutes");
+const { menuRoutes, drinksRoutes } = require("./routes/menuAliasRoutes");
+const corsOptions = require("./config/cors");
 const { stripeWebhook } = require("./controllers/paymentGatewayController");
 
 const app = express();
 
 // Sécurité & middlewares globaux
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || "*", credentials: true }));
+app.use(cors(corsOptions));
 
 // IMPORTANT: le webhook Stripe doit être monté AVANT express.json(), car Stripe exige
 // le corps brut (non parsé) de la requête pour vérifier la signature cryptographique.
@@ -82,6 +85,9 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/audit-logs", auditRoutes);
 app.use("/api/client-auth", clientAuthRoutes);
+app.use("/api/client-portal", clientPortalRoutes);
+app.use("/api/menu", menuRoutes);
+app.use("/api/drinks", drinksRoutes);
 app.use("/api/halls", hallRoutes);
 app.use("/api/payments/gateway", paymentGatewayRoutes);
 app.use("/api/chatbot", chatbotRoutes);

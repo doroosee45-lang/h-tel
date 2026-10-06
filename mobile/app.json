@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Smart Hotel 360",
+    "slug": "smart-hotel-360-client",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B2545"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B2545"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

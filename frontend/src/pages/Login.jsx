@@ -1,78 +1,91 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, Stack, Typography, Card, Avatar, Button, Chip, Divider, Snackbar, Alert, TextField, InputAdornment, IconButton
+  Alert,
+  Box,
+  Button,
+  Card,
+  Chip,
+  Divider,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  Snackbar,
+  Stack,
+  TextField,
+  Typography
 } from '@mui/material';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
-import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded';
-import ManageAccountsRoundedIcon from '@mui/icons-material/ManageAccountsRounded';
-import PersonPinRoundedIcon from '@mui/icons-material/PersonPinRounded';
-import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded';
-import StarRoundedIcon from '@mui/icons-material/StarRounded';
+import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
 import { AppContext } from '../context/AppContext.jsx';
 import { tokens } from '../theme.js';
-import { useContext } from 'react';
 
-const ROLE_CREDENTIALS = {
-  'Super Admin': { email: 'admin@sh360.cd', password: 'admin' },
-  Manager: { email: 'manager@sh360.cd', password: 'manager' },
-  Client: { email: 'client@sh360.cd', password: 'client' }
-};
-
-const ROLE_META = {
-  'Super Admin': {
-    icon: <AdminPanelSettingsRoundedIcon />,
-    desc: 'Accès complet à tous les modules, utilisateurs, rôles, finance et rapports.',
-    avatar: 'https://i.pravatar.cc/100?img=11'
-  },
-  Manager: {
-    icon: <ManageAccountsRoundedIcon />,
-    desc: 'Supervision des opérations quotidiennes et des équipes.',
-    avatar: 'https://i.pravatar.cc/100?img=12'
-  },
-  Client: {
-    icon: <PersonPinRoundedIcon />,
-    desc: 'Espace personnel : réservations, commandes, factures et services.',
-    avatar: 'https://i.pravatar.cc/100?img=33'
-  }
-};
+const MODES = [
+  { value: 'staff', label: 'Personnel', helper: 'Connexion via /api/auth/login' },
+  { value: 'client', label: 'Client', helper: 'Connexion via /api/client-auth/login' },
+  { value: 'register', label: 'Inscription client', helper: 'Création via /api/client-auth/register' }
+];
 
 export default function Login() {
-const { login } = useContext(AppContext);
   const navigate = useNavigate();
-  const [selectedRole, setSelectedRole] = useState('Super Admin');
-  const [email, setEmail] = useState('admin@sh360.cd');
-  const [password, setPassword] = useState('admin');
+  const { authLoading, loginStaff, loginClient, registerClient, verifyStaffOtp, pendingTwoFactor } = useContext(AppContext);
+  const [mode, setMode] = useState('staff');
   const [showPassword, setShowPassword] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    otp: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    nationality: ''
+  });
+  const [snackbar, setSnackbar] = useState({ open: false, severity: 'success', message: '' });
 
-  const handleSelectRole = (role) => {
-    setSelectedRole(role);
-    const creds = ROLE_CREDENTIALS[role];
-    setEmail(creds.email);
-    setPassword(creds.password);
+  const handleChange = (field) => (event) => {
+    setForm((prev) => ({ ...prev, [field]: event.target.value }));
   };
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    const creds = ROLE_CREDENTIALS[selectedRole];
-    if (email === creds.email && password === creds.password) {
-      const user = {
-        nom: selectedRole === 'Super Admin' ? 'Patrick Mwamba'
-          : selectedRole === 'Manager' ? 'Sarah Nzuzi'
-            : 'M. Kanyinda Tshibola',
-        email,
-        role: selectedRole
-      };
-      login(selectedRole, user);
-      setSnackbar({ open: true, message: `Connecté en tant que ${selectedRole}.`, severity: 'success' });
-      setTimeout(() => {
-        navigate(selectedRole === 'Client' ? '/client' : selectedRole === 'Manager' ? '/manager' : '/dashboard', { replace: true });
-      }, 800);
-    } else {
-      setSnackbar({ open: true, message: 'Identifiants incorrects pour ce rôle.', severity: 'error' });
+  const notify = (severity, message) => setSnackbar({ open: true, severity, message });
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    try {
+      if (pendingTwoFactor?.pendingToken) {
+        const result = await verifyStaffOtp(form.otp);
+        notify('success', 'Authentification 2FA validée.');
+        navigate(result.homePath, { replace: true });
+        return;
+      }
+
+      if (mode === 'register') {
+        const result = await registerClient({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone,
+          password: form.password,
+          nationality: form.nationality
+        });
+        notify('success', 'Compte client créé et connecté.');
+        navigate(result.homePath, { replace: true });
+        return;
+      }
+
+      const action = mode === 'client' ? loginClient : loginStaff;
+      const result = await action({ email: form.email, password: form.password });
+      if (result?.twoFactorRequired) {
+        notify('info', 'Code OTP requis pour terminer la connexion.');
+        return;
+      }
+
+      notify('success', 'Connexion réussie.');
+      navigate(result.homePath, { replace: true });
+    } catch (error) {
+      notify('error', error.response?.data?.message || error.message || 'Connexion impossible.');
     }
   };
 
@@ -89,172 +102,133 @@ const { login } = useContext(AppContext);
     >
       <Card sx={{ maxWidth: 1080, width: '100%', borderRadius: '26px', overflow: 'hidden', boxShadow: '0 32px 64px rgba(0,0,0,0.35)' }}>
         <Stack direction={{ xs: 'column', md: 'row' }}>
-          {/* Panneau gauche — branding */}
-          <Box
-            sx={{
-              flex: 1,
-              p: { xs: 4, md: 5 },
-              bgcolor: tokens.color.navyDeep,
-              color: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: { md: 560 }
-            }}
-          >
-            <Box>
-              <Stack direction="row" spacing={1.2} alignItems="center" sx={{ mb: 4 }}>
-                <Box
-                  sx={{
-                    width: 42, height: 42, borderRadius: '10px',
-                    border: `1.5px solid ${tokens.color.gold}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontFamily: tokens.font.display, color: tokens.color.gold, fontSize: 18
-                  }}
-                >
-                  SH
-                </Box>
-                <Box>
-                  <Typography sx={{ fontFamily: tokens.font.display, fontSize: 20, lineHeight: 1.1 }}>Smart Hotel</Typography>
-                  <Typography sx={{ fontFamily: tokens.font.mono, fontSize: 10, letterSpacing: '0.18em', color: tokens.color.gold }}>
-                    360° SUITE
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Typography sx={{ fontFamily: tokens.font.display, fontSize: { xs: 28, md: 34 }, lineHeight: 1.15, mb: 2 }}>
-                Une plateforme de gestion hôtelière digne des plus grands palaces.
-              </Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.65)', fontSize: 14.5, lineHeight: 1.7, mb: 4 }}>
-                Chambres, réservations, restaurant, bar, activités, conciergerie, finance, RH,
-                facturation, paiements mobiles et espace client premium — réunis dans une
-                interface moderne et intuitive.
-              </Typography>
-
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 3 }}>
-                {['Dashboard temps réel', 'Permissions RBAC', 'Paiements mobiles', 'Assistant IA'].map((f) => (
-                  <Chip
-                    key={f}
-                    label={f}
-                    size="small"
-                    sx={{
-                      bgcolor: 'rgba(201,162,75,0.14)',
-                      color: tokens.color.goldSoft,
-                      border: `1px solid rgba(201,162,75,0.35)`,
-                      fontWeight: 600
-                    }}
-                  />
-                ))}
-              </Stack>
-            </Box>
-
-            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-              {[...Array(5)].map((_, i) => (
-                <StarRoundedIcon key={i} sx={{ fontSize: 18, color: tokens.color.gold }} />
-              ))}
-              <Typography variant="caption" sx={{ ml: 1 }}>Hôtel 5 étoiles · Kinshasa</Typography>
+          <Box sx={{ flex: 1, p: { xs: 4, md: 5 }, bgcolor: tokens.color.navyDeep, color: '#fff', minHeight: { md: 560 } }}>
+            <Typography sx={{ fontFamily: tokens.font.display, fontSize: { xs: 30, md: 38 }, mb: 2 }}>
+              Smart Hotel 360° connecté au backend réel.
+            </Typography>
+            <Typography sx={{ color: 'rgba(255,255,255,0.72)', lineHeight: 1.7, mb: 3 }}>
+              Cette interface utilise désormais l'API Express/Mongo et Socket.io du projet. Le personnel et les clients utilisent des parcours d'authentification distincts.
+            </Typography>
+            <Stack spacing={1.2}>
+              <Chip label="Staff: /api/auth/login" sx={{ width: 'fit-content', bgcolor: 'rgba(255,255,255,0.1)', color: '#fff' }} />
+              <Chip label="Client: /api/client-auth/login" sx={{ width: 'fit-content', bgcolor: 'rgba(255,255,255,0.1)', color: '#fff' }} />
+              <Chip label="Rafraîchissement automatique des tokens" sx={{ width: 'fit-content', bgcolor: 'rgba(255,255,255,0.1)', color: '#fff' }} />
             </Stack>
           </Box>
 
-          {/* Panneau droit — formulaire */}
           <Box sx={{ flex: 1, p: { xs: 3, md: 5 }, bgcolor: tokens.color.surface }}>
             <Typography variant="h5" sx={{ mb: 0.5 }}>Connexion</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Sélectionnez un rôle et utilisez les identifiants pré-remplis.
+              {pendingTwoFactor?.pendingToken ? 'Entrez le code OTP pour finaliser la session staff.' : MODES.find((item) => item.value === mode)?.helper}
             </Typography>
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ mb: 3 }}>
-              {['Super Admin', 'Manager', 'Client'].map((role) => (
-                <Card
-                  key={role}
-                  onClick={() => handleSelectRole(role)}
-                  sx={{
-                    p: 1.6,
-                    flex: 1,
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    border: `1.5px solid ${selectedRole === role ? tokens.color.gold : tokens.color.line}`,
-                    bgcolor: selectedRole === role ? tokens.color.goldSoft : '#fff',
-                    transition: 'all 0.2s',
-                    '&:hover': { borderColor: tokens.color.gold }
-                  }}
-                >
-                  <Box sx={{ color: selectedRole === role ? tokens.color.navy : tokens.color.inkMuted, display: 'flex', justifyContent: 'center', mb: 0.6 }}>
-                    {ROLE_META[role].icon}
-                  </Box>
-                  <Typography sx={{ fontWeight: 700, fontSize: 13.5 }}>{role}</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.4, fontSize: 10.5, lineHeight: 1.4 }}>
-                    {ROLE_META[role].desc}
-                  </Typography>
-                </Card>
-              ))}
-            </Stack>
+            {!pendingTwoFactor?.pendingToken ? (
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ mb: 3 }}>
+                {MODES.map((item) => (
+                  <Card
+                    key={item.value}
+                    onClick={() => setMode(item.value)}
+                    sx={{
+                      p: 1.6,
+                      flex: 1,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      border: `1.5px solid ${mode === item.value ? tokens.color.gold : tokens.color.line}`,
+                      bgcolor: mode === item.value ? tokens.color.goldSoft : '#fff'
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 700, fontSize: 13.5 }}>{item.label}</Typography>
+                    <Typography variant="caption" color="text.secondary">{item.helper}</Typography>
+                  </Card>
+                ))}
+              </Stack>
+            ) : null}
 
-            <form onSubmit={handleLogin}>
+            <form onSubmit={handleSubmit}>
               <Stack spacing={2}>
-                <TextField
-                  label="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  fullWidth
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start"><PersonRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment>
-                    )
-                  }}
-                />
-                <TextField
-                  label="Mot de passe"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  fullWidth
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start"><LockRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment>
-                    ),
-                    endAdornment: (
-                      <IconButton size="small" onClick={() => setShowPassword((p) => !p)}>
-                        {showPassword ? 'Masquer' : 'Voir'}
-                      </IconButton>
-                    )
-                  }}
-                />
+                {mode === 'register' && !pendingTwoFactor?.pendingToken ? (
+                  <>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <TextField label="Prénom" value={form.firstName} onChange={handleChange('firstName')} fullWidth />
+                      <TextField label="Nom" value={form.lastName} onChange={handleChange('lastName')} fullWidth />
+                    </Stack>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                      <TextField label="Téléphone" value={form.phone} onChange={handleChange('phone')} fullWidth />
+                      <TextField label="Nationalité" value={form.nationality} onChange={handleChange('nationality')} fullWidth />
+                    </Stack>
+                  </>
+                ) : null}
+
+                {!pendingTwoFactor?.pendingToken ? (
+                  <>
+                    <TextField
+                      label="Email"
+                      value={form.email}
+                      onChange={handleChange('email')}
+                      fullWidth
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start"><PersonRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment>
+                        )
+                      }}
+                    />
+                    <TextField
+                      label="Mot de passe"
+                      type={showPassword ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={handleChange('password')}
+                      fullWidth
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start"><LockRoundedIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment>
+                        ),
+                        endAdornment: (
+                          <IconButton size="small" onClick={() => setShowPassword((prev) => !prev)}>
+                            {showPassword ? 'Masquer' : 'Voir'}
+                          </IconButton>
+                        )
+                      }}
+                    />
+                  </>
+                ) : (
+                  <TextField
+                    label="Code OTP"
+                    value={form.otp}
+                    onChange={handleChange('otp')}
+                    fullWidth
+                  />
+                )}
+
                 <Button
                   type="submit"
                   variant="contained"
                   color="secondary"
                   size="large"
-                  endIcon={<ArrowForwardRoundedIcon />}
-                  sx={{ py: 1.4, fontWeight: 700, boxShadow: 'none' }}
+                  disabled={authLoading}
+                  startIcon={mode === 'register' ? <PersonAddRoundedIcon /> : null}
+                  endIcon={mode !== 'register' ? <ArrowForwardRoundedIcon /> : null}
+                  sx={{ py: 1.4, fontWeight: 700 }}
                 >
-                  Se connecter
+                  {authLoading ? 'Veuillez patienter…' : pendingTwoFactor?.pendingToken ? 'Valider le code' : mode === 'register' ? 'Créer mon compte client' : 'Se connecter'}
                 </Button>
               </Stack>
             </form>
 
             <Divider sx={{ my: 3 }}>
-              <Chip label="Aperçu rapide" size="small" />
+              <Chip label="Notes backend" size="small" />
             </Divider>
-
-<Box sx={{ p: 2, borderRadius: '14px', bgcolor: tokens.color.cream }}>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems={{ xs: 'flex-start', sm: 'center' }}>
-                <WorkspacePremiumRoundedIcon sx={{ color: tokens.color.gold, flexShrink: 0 }} />
-                <Typography variant="body2" sx={{ fontSize: 12.5 }}>
-                  Démo : admin@sh360.cd / admin · manager@sh360.cd / manager · client@sh360.cd / client
-                </Typography>
-              </Stack>
-            </Box>
+            <Alert severity="info">
+              Le login staff peut demander un OTP si le 2FA est activé. Les rôles et accès sont ensuite pilotés par les rôles backend réels.
+            </Alert>
           </Box>
         </Stack>
       </Card>
 
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar((p) => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity={snackbar.severity} variant="filled" onClose={() => setSnackbar((p) => ({ ...p, open: false }))}>
+      <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity={snackbar.severity} variant="filled" onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}>
           {snackbar.message}
         </Alert>
       </Snackbar>
     </Box>
   );
 }
-

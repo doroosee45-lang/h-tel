@@ -54,8 +54,9 @@ const createRequest = asyncHandler(async (req, res) => {
     type,
     details,
     scheduledFor,
-    cost: cost || 0,
-    isBilledToRoom: !!isBilledToRoom,
+    // Le tarif est fixé par le personnel: ignoré si la demande vient d'un client
+    cost: req.client ? 0 : cost || 0,
+    isBilledToRoom: req.client ? false : !!isBilledToRoom,
     createdBy: req.user?._id,
   });
 

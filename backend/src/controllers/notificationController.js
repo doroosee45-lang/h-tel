@@ -19,6 +19,10 @@ const getMyNotifications = asyncHandler(async (req, res) => {
 
 // @route GET /api/notifications/client/:clientId  (notifications d'un client, app mobile)
 const getClientNotifications = asyncHandler(async (req, res) => {
+  if (req.client && req.client._id.toString() !== req.params.clientId) {
+    res.status(403);
+    throw new Error("Accès refusé");
+  }
   const notifications = await Notification.find({ recipientClient: req.params.clientId }).sort({
     createdAt: -1,
   });

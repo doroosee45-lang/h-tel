@@ -4,6 +4,7 @@ const MenuItem = require("../models/MenuItem");
 const StockItem = require("../models/StockItem");
 const StockMovement = require("../models/StockMovement");
 const Table = require("../models/Table");
+const Reservation = require("../models/Reservation");
 const { generateReference } = require("../utils/reference");
 const { notify } = require("../utils/notify");
 
@@ -11,7 +12,7 @@ const { notify } = require("../utils/notify");
 
 // @route GET /api/:module/orders
 const getOrders = asyncHandler(async (req, res) => {
-  const origin = req.baseUrl.includes("bar") ? "bar" : "restaurant";
+  const origin = req.orderOrigin || (req.baseUrl.includes("bar") ? "bar" : "restaurant");
   const { status, table, room, isPaid, page = 1, limit = 30 } = req.query;
   const filter = { origin };
   if (status) filter.status = status;
@@ -33,7 +34,7 @@ const getOrders = asyncHandler(async (req, res) => {
 
 // @route GET /api/:module/orders/kitchen  -> file d'attente cuisine/bar en temps réel
 const getKitchenQueue = asyncHandler(async (req, res) => {
-  const origin = req.baseUrl.includes("bar") ? "bar" : "restaurant";
+  const origin = req.orderOrigin || (req.baseUrl.includes("bar") ? "bar" : "restaurant");
   const orders = await Order.find({ origin, status: { $in: ["new", "preparing", "ready"] } })
     .populate("table")
     .populate("room")
@@ -43,13 +44,26 @@ const getKitchenQueue = asyncHandler(async (req, res) => {
 
 // @route POST /api/:module/orders
 const createOrder = asyncHandler(async (req, res) => {
-  const origin = req.baseUrl.includes("bar") ? "bar" : "restaurant";
-  const { table, room, items, channel, chargedToRoom, discount, notes } = req.body;
+  const origin = req.orderOrigin || (req.baseUrl.includes("bar") ? "bar" : "restaurant");
+  const { table, room, items, channel, notes } = req.body;
+  // Un client connecté ne peut ni s'attribuer de remise ni agir pour un autre client
+  const isClientCaller = !!req.client;
+  const discount = isClientCaller ? 0 : req.body.discount;
+  const chargedToRoom = req.body.chargedToRoom;
   const client = req.client?._id || req.body.client;
 
   if (!items || items.length === 0) {
     res.status(400);
     throw new Error("La commande doit contenir au moins un article");
+  }
+
+  // Un client ne peut commander "en chambre" que pour une chambre où il est actuellement hébergé
+  if (isClientCaller && (room || chargedToRoom)) {
+    const stay = room && (await Reservation.findOne({ client, room, status: "checked_in" }));
+    if (!stay) {
+      res.status(403);
+      throw new Error("Commande en chambre possible uniquement pour votre chambre (check-in effectué)");
+    }
   }
 
   const orderItems = [];
@@ -61,7 +75,11 @@ const createOrder = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error(`Article indisponible: ${line.menuItem}`);
     }
-    const quantity = line.quantity || 1;
+    const quantity = line.quantity === undefined ? 1 : Number(line.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      res.status(400);
+      throw new Error("Quantité invalide");
+    }
     const lineTotal = menuItem.price * quantity;
     subtotal += lineTotal;
 
@@ -109,6 +127,23 @@ const createOrder = asyncHandler(async (req, res) => {
 
   if (table) await Table.findByIdAndUpdate(table, { status: "occupied" });
 
+  // Temps réel: file d'attente cuisine/bar + dashboard
+  const io = req.app.get("io");
+  if (io) {
+    io.to(origin === "bar" ? "bar" : "kitchen").emit("order:new", order);
+    io.to("dashboard").emit("order:new", order);
+  }
+  await notify(
+    req,
+    {
+      title: "Nouvelle commande",
+      message: `Commande ${order.orderNumber} (${origin}) — ${total}`,
+      type: "general",
+      data: { orderId: order._id },
+    },
+    origin === "bar" ? "bar" : "kitchen"
+  );
+
   res.status(201).json({ success: true, data: order });
 });
 
@@ -127,18 +162,27 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     throw new Error("Commande non trouvée");
   }
 
-  if (status === "ready") {
-    await notify(
-      req,
-      {
-        recipientClient: order.client,
-        title: "Commande prête",
-        message: `Votre commande ${order.orderNumber} est prête${order.origin === "bar" ? " au bar" : " en cuisine"}.`,
-        type: "order_ready",
-        data: { orderId: order._id },
-      },
-      order.client ? order.client.toString() : order.origin
-    );
+  const io = req.app.get("io");
+  if (io) {
+    io.to(order.origin === "bar" ? "bar" : "kitchen").emit("order:updated", order);
+    io.to("dashboard").emit("order:updated", order);
+  }
+
+  if (order.client) {
+    const labels = { preparing: "en préparation", ready: "prête", served: "servie", cancelled: "annulée" };
+    if (labels[status]) {
+      await notify(
+        req,
+        {
+          recipientClient: order.client,
+          title: status === "ready" ? "Commande prête" : "Mise à jour de commande",
+          message: `Votre commande ${order.orderNumber} est ${labels[status]}.`,
+          type: status === "ready" ? "order_ready" : "general",
+          data: { orderId: order._id, status },
+        },
+        order.client.toString()
+      );
+    }
   }
 
   res.json({ success: true, data: order });

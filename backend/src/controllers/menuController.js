@@ -11,21 +11,21 @@ const { notify } = require("../utils/notify");
 
 // @route GET /api/:module/categories   (module = restaurant | bar)
 const getCategories = asyncHandler(async (req, res) => {
-  const type = req.baseUrl.includes("bar") ? "bar" : "restaurant";
+  const type = req.menuType || (req.baseUrl.includes("bar") ? "bar" : "restaurant");
   const categories = await MenuCategory.find({ type }).sort({ order: 1 });
   res.json({ success: true, data: categories });
 });
 
 // @route POST /api/:module/categories
 const createCategory = asyncHandler(async (req, res) => {
-  const type = req.baseUrl.includes("bar") ? "bar" : "restaurant";
+  const type = req.menuType || (req.baseUrl.includes("bar") ? "bar" : "restaurant");
   const category = await MenuCategory.create({ ...req.body, type });
   res.status(201).json({ success: true, data: category });
 });
 
 // @route GET /api/:module/items
 const getItems = asyncHandler(async (req, res) => {
-  const type = req.baseUrl.includes("bar") ? "bar" : "restaurant";
+  const type = req.menuType || (req.baseUrl.includes("bar") ? "bar" : "restaurant");
   const { category, search, available, page = 1, limit = 50 } = req.query;
   const filter = { type };
   if (category) filter.category = category;
@@ -45,7 +45,7 @@ const getItems = asyncHandler(async (req, res) => {
 
 // @route GET /api/:module/items/popular
 const getPopularItems = asyncHandler(async (req, res) => {
-  const type = req.baseUrl.includes("bar") ? "bar" : "restaurant";
+  const type = req.menuType || (req.baseUrl.includes("bar") ? "bar" : "restaurant");
   const items = await MenuItem.find({ type }).sort({ salesCount: -1 }).limit(10);
   res.json({ success: true, data: items });
 });
@@ -62,7 +62,7 @@ const getItem = asyncHandler(async (req, res) => {
 
 // @route POST /api/:module/items
 const createItem = asyncHandler(async (req, res) => {
-  const type = req.baseUrl.includes("bar") ? "bar" : "restaurant";
+  const type = req.menuType || (req.baseUrl.includes("bar") ? "bar" : "restaurant");
   const item = await MenuItem.create({ ...req.body, type });
   res.status(201).json({ success: true, data: item });
 });

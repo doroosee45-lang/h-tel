@@ -9,6 +9,8 @@
     "dev": "nodemon server.js",
     "seed": "node src/utils/seed.js",
     "seed:products": "node src/utils/seedProducts.js",
+    "seed:all": "node src/utils/seed.js && node src/utils/seedProducts.js",
+    "check": "node scripts/check.js",
     "backup": "bash scripts/backup.sh"
   },
   "dependencies": {

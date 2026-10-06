@@ -3,6 +3,8 @@ const http = require("http");
 const { Server } = require("socket.io");
 const app = require("./src/app");
 const connectDB = require("./src/config/db");
+const corsOptions = require("./src/config/cors");
+const { authenticateSocket, canJoin } = require("./src/utils/socketAuth");
 
 const PORT = process.env.PORT || 5000;
 
@@ -12,14 +14,20 @@ const server = http.createServer(app);
 
 // Socket.io: temps réel pour cuisine, notifications, dashboard live
 const io = new Server(server, {
-  cors: { origin: process.env.CLIENT_URL || "*", credentials: true },
+  cors: corsOptions,
 });
+
+io.use(authenticateSocket);
 
 io.on("connection", (socket) => {
   console.log(`🔌 Client connecté: ${socket.id}`);
 
-  // Le client rejoint une "room" socket.io (ex: "kitchen", "bar", "dashboard")
-  socket.on("join", (channel) => socket.join(channel));
+  // Le client rejoint une "room" socket.io (ex: "kitchen", "bar", "dashboard").
+  // Les rooms du personnel exigent un token staff; un client ne peut rejoindre que sa propre room.
+  socket.on("join", (channel) => {
+    if (canJoin(socket, channel)) socket.join(String(channel));
+    else socket.emit("join:denied", channel);
+  });
 
   socket.on("disconnect", () => {
     console.log(`🔌 Client déconnecté: ${socket.id}`);

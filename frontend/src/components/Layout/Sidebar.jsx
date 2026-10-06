@@ -28,6 +28,7 @@ import LocalActivityRoundedIcon from '@mui/icons-material/LocalActivityRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import { AppContext } from '../../context/AppContext.jsx';
 import { tokens } from '../../theme.js';
+import { getRoleGroup, getRoleLabel } from '../../utils/auth.js';
 
 // ---------------------------------------------------------------------------
 // Navigation exacte par rôle (conforme au cahier des charges)
@@ -35,7 +36,7 @@ import { tokens } from '../../theme.js';
 // déclenchent la déconnexion au lieu d'une navigation.
 // ---------------------------------------------------------------------------
 const roleNav = {
-  'Super Admin': [
+  admin: [
     { section: 'Vue d’ensemble', items: [{ to: '/dashboard', label: 'Global', icon: <DashboardRoundedIcon /> }] },
     {
       section: 'Gestion',
@@ -81,7 +82,7 @@ const roleNav = {
       items: [{ type: 'logout', label: 'Déconnexion', icon: <LogoutRoundedIcon /> }]
     }
   ],
-  Manager: [
+  manager: [
     { section: 'Vue d’ensemble', items: [{ to: '/manager', label: 'Dashboard Manager', icon: <DashboardRoundedIcon /> }] },
     {
       section: 'Opérations quotidiennes',
@@ -119,7 +120,7 @@ const roleNav = {
       items: [{ type: 'logout', label: 'Déconnexion', icon: <LogoutRoundedIcon /> }]
     }
   ],
-  Client: [
+  client: [
     { section: 'Accueil', items: [{ to: '/client', label: 'Accueil', icon: <HomeRoundedIcon /> }] },
     {
       section: 'Mon séjour',
@@ -163,7 +164,7 @@ const SIDEBAR_WIDTH = 268;
 function SidebarContent({ onItemClick }) {
   const { userRole, logout } = useContext(AppContext);
   const navigate = useNavigate();
-  const nav = roleNav[userRole] || roleNav['Super Admin'];
+  const nav = roleNav[getRoleGroup(userRole)] || roleNav.manager;
 
   const handleLogout = () => {
     logout();
@@ -256,7 +257,7 @@ function SidebarContent({ onItemClick }) {
         <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', mb: 0.5 }}>Connexion</Typography>
         <Stack direction="row" spacing={1} alignItems="center">
           <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: tokens.color.success }} />
-          <Typography sx={{ fontSize: 13, fontWeight: 600, textTransform: 'capitalize' }}>{userRole}</Typography>
+          <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{getRoleLabel(userRole)}</Typography>
         </Stack>
       </Box>
     </>
@@ -306,4 +307,3 @@ export default function Sidebar({ mobileOpen, onClose, isMobile }) {
 }
 
 export { SIDEBAR_WIDTH };
-

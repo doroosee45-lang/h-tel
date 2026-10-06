@@ -29,12 +29,13 @@ Inspection statique des routeurs, contrôleurs, modèles, middlewares, clients A
 
 ## Vérifications effectuées
 
-- `backend/npm test` : **9 tests réussis** (dates/remises, montant exact, recherche littérale bornée, contrôle CSRF, absence de stack/message interne).
+- `backend/npm test` : **10 tests réussis** (dates/remises, montant exact, références fournisseur sûres, recherche littérale bornée, contrôle CSRF, absence de stack/message interne).
 - `backend/npm run check` : **réussi**, 29 routeurs montés.
 - `frontend/npm run lint` : **réussi**, avec avertissements existants (notamment imports inutilisés, effets React et génération QR pseudo-aléatoire).
 - `frontend/npm run build` : **réussi** ; avertissement de bundle principal volumineux (~1,19 Mo).
 - `mobile/npx expo config --type public --json` : **réussi**.
 - `mobile/npx expo export --platform android` : **réussi**.
+- Validation parallèle : aucune remarque du code review ; CodeQL signale encore la protection CSRF personnalisée et deux requêtes par référence fournisseur. La protection CSRF vérifie l’origine exacte pour le cookie de refresh (testée), et les références sont contraintes à des chaînes primitives bornées sans opérateurs Mongo ; les alertes restantes sont des limites de reconnaissance de ces protections personnalisées.
 - `npm audit` après mise à jour compatible : backend conserve 3 avis élevés de dépendances dev ; frontend 2 avis modérés dans React Router 6 ; mobile 67 avis (1 faible, 24 modérés, 41 élevés, 1 critique). Les remédiations npm proposées pour React Router et Expo/React Native impliquent une migration majeure ; elles n’ont pas été forcées.
 
 ## Points restant à traiter

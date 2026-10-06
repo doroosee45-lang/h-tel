@@ -12,4 +12,7 @@ const parseExactPaymentAmount = (requestedAmount, amountDue) => {
   return amountDue;
 };
 
-module.exports = { parseExactPaymentAmount };
+const isValidPaymentReference = (reference) =>
+  typeof reference === "string" && /^[a-z\d._-]{1,200}$/i.test(reference);
+
+module.exports = { parseExactPaymentAmount, isValidPaymentReference };

@@ -7,7 +7,7 @@ const Invoice = require("../models/Invoice");
 const Order = require("../models/Order");
 const Payment = require("../models/Payment");
 const { notify } = require("../utils/notify");
-const { parseExactPaymentAmount } = require("../utils/paymentValidation");
+const { parseExactPaymentAmount, isValidPaymentReference } = require("../utils/paymentValidation");
 
 const isObjectId = (value) => typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
 const toObjectId = (value) => new mongoose.Types.ObjectId(value);
@@ -66,9 +66,7 @@ const finalizePayment = async (req, res, { invoiceId, orderId, amount, method, r
     (invoiceId && !isObjectId(invoiceId)) ||
     (orderId && !isObjectId(orderId)) ||
     !["stripe", "paypal", "mobile_money"].includes(method) ||
-    typeof reference !== "string" ||
-    !reference ||
-    reference.length > 200
+    !isValidPaymentReference(reference)
   ) {
     paymentError(res, 400, "Référence ou cible de paiement invalide");
   }

@@ -6,17 +6,90 @@ const Invoice = require("../models/Invoice");
 const Order = require("../models/Order");
 const Payment = require("../models/Payment");
 const { notify } = require("../utils/notify");
+const { parseExactPaymentAmount } = require("../utils/paymentValidation");
+
+const paymentError = (res, status, message) => {
+  res.status(status);
+  throw new Error(message);
+};
+
+const getPaymentTarget = async (req, res, { invoiceId, orderId }) => {
+  if (Boolean(invoiceId) === Boolean(orderId)) {
+    paymentError(res, 400, "Précisez exactement une facture ou une commande");
+  }
+
+  const invoice = invoiceId ? await Invoice.findById(invoiceId) : null;
+  const order = orderId ? await Order.findById(orderId) : null;
+  const target = invoiceId ? invoice : order;
+  if (!target) paymentError(res, 404, "Facture ou commande non trouvée");
+  if (req.client && (!target.client || target.client.toString() !== req.client._id.toString())) {
+    paymentError(res, 404, "Facture ou commande non trouvée");
+  }
+
+  let amountDue;
+  if (invoice) {
+    if (invoice.status === "cancelled") paymentError(res, 400, "Cette facture ne peut pas être payée");
+    const payments = await Payment.find({ invoice: invoice._id, status: { $in: ["completed", "refunded"] } });
+    amountDue = invoice.total - payments.reduce((sum, payment) => sum + payment.amount, 0);
+  } else {
+    if (order.isPaid) paymentError(res, 400, "Cette commande est déjà payée");
+    amountDue = order.total;
+  }
+  if (!Number.isFinite(amountDue) || amountDue <= 0) {
+    paymentError(res, 400, "Aucun montant restant à payer");
+  }
+
+  return { invoice, order, amountDue };
+};
+
+const validatePaymentAmount = (res, requestedAmount, amountDue) => {
+  const amount = parseExactPaymentAmount(requestedAmount, amountDue);
+  if (amount === null) {
+    paymentError(res, 400, "Le montant demandé ne correspond pas au solde à régler");
+  }
+  return amount;
+};
 
 // Marque une facture/commande comme payée une fois le paiement confirmé par la passerelle
 // (webhook ou capture synchrone) — factorisé pour être appelé par les 3 passerelles.
-const finalizePayment = async (req, { invoiceId, orderId, amount, method, reference }) => {
-  const payment = await Payment.create({
-    invoice: invoiceId,
-    amount,
-    method,
-    reference,
-    status: "completed",
-  });
+const finalizePayment = async (req, res, { invoiceId, orderId, amount, method, reference }) => {
+  if (!reference) paymentError(res, 400, "Référence de paiement absente");
+  let payment = await Payment.findOne({ method, reference });
+  let wasExisting = Boolean(payment);
+  if (payment) {
+    if (
+      payment.invoice?.toString() !== invoiceId?.toString() ||
+      payment.order?.toString() !== orderId?.toString()
+    ) {
+      paymentError(res, 409, "Cette référence de paiement est déjà associée à une autre transaction");
+    }
+  } else {
+    const target = await getPaymentTarget(req, res, { invoiceId, orderId });
+    if (parseExactPaymentAmount(amount, target.amountDue) === null) {
+      paymentError(res, 400, "Le montant confirmé ne correspond pas au solde de la facture ou commande");
+    }
+    try {
+      payment = await Payment.create({
+        invoice: invoiceId,
+        order: orderId,
+        amount,
+        method,
+        reference,
+        status: "completed",
+      });
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+      payment = await Payment.findOne({ method, reference });
+      if (
+        !payment ||
+        payment.invoice?.toString() !== invoiceId?.toString() ||
+        payment.order?.toString() !== orderId?.toString()
+      ) {
+        paymentError(res, 409, "Cette référence de paiement est déjà associée à une autre transaction");
+      }
+      wasExisting = true;
+    }
+  }
 
   if (invoiceId) {
     const invoice = await Invoice.findById(invoiceId);
@@ -27,7 +100,7 @@ const finalizePayment = async (req, { invoiceId, orderId, amount, method, refere
       invoice.status = totalPaid >= invoice.total ? "paid" : "partial";
       await invoice.save();
 
-      if (invoice.client) {
+      if (invoice.client && !wasExisting) {
         await notify(
           req,
           {
@@ -45,7 +118,7 @@ const finalizePayment = async (req, { invoiceId, orderId, amount, method, refere
 
   if (orderId) {
     const order = await Order.findByIdAndUpdate(orderId, { isPaid: true, paymentMethod: method }, { new: true });
-    if (order?.client) {
+    if (order?.client && !wasExisting) {
       await notify(
         req,
         {
@@ -71,11 +144,12 @@ const createStripeIntent = asyncHandler(async (req, res) => {
     res.status(503);
     throw new Error("Stripe n'est pas configuré côté serveur (clé API manquante)");
   }
-  const { amount, currency, invoiceId, orderId } = req.body;
+  const { amount, invoiceId, orderId } = req.body;
+  const target = await getPaymentTarget(req, res, { invoiceId, orderId });
 
   const intent = await stripeGateway.createPaymentIntent({
-    amount,
-    currency,
+    amount: validatePaymentAmount(res, amount, target.amountDue),
+    currency: process.env.STRIPE_CURRENCY || "eur",
     metadata: { invoiceId: invoiceId || "", orderId: orderId || "", clientId: req.client?._id?.toString() || "" },
   });
 
@@ -92,13 +166,13 @@ const stripeWebhook = asyncHandler(async (req, res) => {
     event = stripeGateway.constructWebhookEvent(req.body, signature);
   } catch (err) {
     res.status(400);
-    throw new Error(`Signature webhook Stripe invalide: ${err.message}`);
+    throw new Error("Signature webhook Stripe invalide");
   }
 
   if (event.type === "payment_intent.succeeded") {
     const intent = event.data.object;
     const { invoiceId, orderId } = intent.metadata || {};
-    await finalizePayment(req, {
+    await finalizePayment(req, res, {
       invoiceId: invoiceId || undefined,
       orderId: orderId || undefined,
       amount: intent.amount_received / 100,
@@ -119,10 +193,15 @@ const createPaypalOrder = asyncHandler(async (req, res) => {
     res.status(503);
     throw new Error("PayPal n'est pas configuré côté serveur");
   }
-  const { amount, currency, invoiceId, orderId } = req.body;
+  const { amount, invoiceId, orderId } = req.body;
+  const target = await getPaymentTarget(req, res, { invoiceId, orderId });
   const reference = invoiceId || orderId || `PAY-${Date.now()}`;
 
-  const order = await paypalGateway.createOrder({ amount, currency, reference });
+  const order = await paypalGateway.createOrder({
+    amount: validatePaymentAmount(res, amount, target.amountDue),
+    currency: (process.env.STRIPE_CURRENCY || "EUR").toUpperCase(),
+    reference,
+  });
   res.status(201).json({ success: true, data: order });
 });
 
@@ -142,7 +221,15 @@ const capturePaypalOrder = asyncHandler(async (req, res) => {
   );
 
   if (status === "COMPLETED") {
-    await finalizePayment(req, {
+    const { invoiceId, orderId } = req.body;
+    const reference = invoiceId || orderId;
+    const capturedReference = capture.purchase_units?.[0]?.reference_id;
+    if (!reference || capturedReference !== reference) {
+      paymentError(res, 400, "La commande PayPal ne correspond pas à la facture ou commande fournie");
+    }
+    const target = await getPaymentTarget(req, res, { invoiceId, orderId });
+    validatePaymentAmount(res, amountCaptured, target.amountDue);
+    await finalizePayment(req, res, {
       invoiceId,
       orderId,
       amount: amountCaptured,
@@ -163,11 +250,18 @@ const initiateMobileMoneyPayment = asyncHandler(async (req, res) => {
     res.status(503);
     throw new Error("Mobile Money n'est pas configuré côté serveur");
   }
-  const { amount, phone, currency, invoiceId, orderId } = req.body;
+  const { amount, phone, invoiceId, orderId } = req.body;
+  const target = await getPaymentTarget(req, res, { invoiceId, orderId });
   const reference = invoiceId || orderId || `PAY-${Date.now()}`;
   const callbackUrl = `${req.protocol}://${req.get("host")}/api/payments/gateway/mobile-money/webhook`;
 
-  const result = await mobileMoneyGateway.initiatePayment({ amount, currency, phone, reference, callbackUrl });
+  const result = await mobileMoneyGateway.initiatePayment({
+    amount: validatePaymentAmount(res, amount, target.amountDue),
+    currency: (process.env.STRIPE_CURRENCY || "EUR").toUpperCase(),
+    phone,
+    reference,
+    callbackUrl,
+  });
 
   res.status(201).json({
     success: true,
@@ -181,13 +275,30 @@ const initiateMobileMoneyPayment = asyncHandler(async (req, res) => {
 // @route POST /api/payments/gateway/mobile-money/webhook
 // Format du corps à adapter selon votre agrégateur réel (voir mobileMoneyGateway.js)
 const mobileMoneyWebhook = asyncHandler(async (req, res) => {
-  const { status, amount, order_reference, payment_id } = req.body;
+  const { payment_id } = req.body;
+  if (typeof payment_id !== "string" || !payment_id || payment_id.length > 200) {
+    paymentError(res, 400, "Identifiant de paiement invalide");
+  }
+  const confirmed = await mobileMoneyGateway.verifyPayment(payment_id);
+  const status = String(confirmed.status || "").toLowerCase();
 
-  if (status === "success" || status === "SUCCESS" || status === "completed") {
-    // order_reference contient l'invoiceId OU orderId passé à l'initiation
-    await finalizePayment(req, {
-      invoiceId: order_reference,
-      amount,
+  if (status === "success" || status === "completed") {
+    const reference = confirmed.order_reference;
+    if (!reference || (req.body.order_reference && req.body.order_reference !== reference)) {
+      paymentError(res, 400, "Référence de paiement invalide");
+    }
+    const invoice = await Invoice.findById(reference);
+    const order = invoice ? null : await Order.findById(reference);
+    if (!invoice && !order) paymentError(res, 404, "Facture ou commande non trouvée");
+    const target = await getPaymentTarget(req, res, {
+      invoiceId: invoice ? reference : undefined,
+      orderId: order ? reference : undefined,
+    });
+    validatePaymentAmount(res, confirmed.amount, target.amountDue);
+    await finalizePayment(req, res, {
+      invoiceId: invoice ? reference : undefined,
+      orderId: order ? reference : undefined,
+      amount: Number(confirmed.amount),
       method: "mobile_money",
       reference: payment_id,
     });

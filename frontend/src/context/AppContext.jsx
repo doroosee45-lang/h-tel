@@ -65,7 +65,7 @@ export function AppProvider({ children }) {
     setCurrentUser(nextSession?.user || null);
   }, []);
 
-  const fetchCurrentUser = useCallback(async (activeSession = session) => {
+  const fetchCurrentUser = useCallback(async (activeSession = getSession()) => {
     if (!activeSession?.accessToken) return null;
 
     const endpoint = isClientSession(activeSession) ? '/client-auth/me' : '/auth/me';
@@ -82,9 +82,9 @@ export function AppProvider({ children }) {
     saveSession(nextSession);
     syncSession(nextSession);
     return nextSession.user;
-  }, [session, syncSession]);
+  }, [syncSession]);
 
-  const fetchNotifications = useCallback(async (activeSession = session) => {
+  const fetchNotifications = useCallback(async (activeSession = getSession()) => {
     if (!activeSession?.accessToken) {
       setNotifications([]);
       return [];
@@ -96,7 +96,7 @@ export function AppProvider({ children }) {
     const mapped = data.map(mapNotification);
     setNotifications(mapped);
     return mapped;
-  }, [session]);
+  }, []);
 
   const applySession = useCallback(async (nextSession) => {
     saveSession(nextSession);
@@ -208,9 +208,10 @@ export function AppProvider({ children }) {
   }, [applySession]);
 
   const logout = useCallback(async () => {
+    const activeSession = getSession();
     try {
-      if (session?.accessToken) {
-        const endpoint = isClientSession(session) ? '/client-auth/logout' : '/auth/logout';
+      if (activeSession?.accessToken) {
+        const endpoint = isClientSession(activeSession) ? '/client-auth/logout' : '/auth/logout';
         await api.post(endpoint, {});
       }
     } catch {
@@ -222,7 +223,7 @@ export function AppProvider({ children }) {
       setNotifications([]);
       setPendingTwoFactor(null);
     }
-  }, [session, syncSession]);
+  }, [syncSession]);
 
   const markNotificationRead = useCallback(async (id) => {
     const endpoint = isClientSession(session)
@@ -282,9 +283,11 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (!session?.accessToken) return;
-    fetchCurrentUser(session).catch(() => logout());
-    fetchNotifications(session).catch(() => {});
-  }, [fetchCurrentUser, fetchNotifications, logout, session]);
+    fetchCurrentUser().catch((error) => {
+      if (error?.response?.status === 401) logout();
+    });
+    fetchNotifications().catch(() => {});
+  }, [fetchCurrentUser, fetchNotifications, logout, session?.accessToken, session?.authType, session?.user?.id]);
 
   const addToCart = useCallback((item) => {
     setCartItems((prev) => {

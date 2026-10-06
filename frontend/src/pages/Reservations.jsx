@@ -42,6 +42,8 @@ export default function Reservations() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [openCreate, setOpenCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
   const [form, setForm] = useState({ room: '', client: '', checkInDate: '', checkOutDate: '', adults: 2, children: 0, notes: '' });
   const { data, loading, error, reload } = useAsyncData(loadReservations, []);
 
@@ -59,13 +61,21 @@ export default function Reservations() {
   }), [data?.reservations, query, statusFilter]);
 
   const handleCreate = async () => {
-    await api.post('/reservations', {
-      ...form,
-      source: 'reception'
-    });
-    setOpenCreate(false);
-    setForm({ room: '', client: '', checkInDate: '', checkOutDate: '', adults: 2, children: 0, notes: '' });
-    await reload();
+    setCreating(true);
+    setCreateError('');
+    try {
+      await api.post('/reservations', {
+        ...form,
+        source: 'reception'
+      });
+      setOpenCreate(false);
+      setForm({ room: '', client: '', checkInDate: '', checkOutDate: '', adults: 2, children: 0, notes: '' });
+      await reload();
+    } catch (requestError) {
+      setCreateError(requestError.response?.data?.message || requestError.message || 'La réservation n’a pas pu être créée.');
+    } finally {
+      setCreating(false);
+    }
   };
 
   if (loading) return <LoadingCard message="Chargement des réservations…" />;
@@ -87,7 +97,7 @@ export default function Reservations() {
             ))}
           </TextField>
         </Stack>
-        <Button variant="contained" color="secondary" onClick={() => setOpenCreate(true)}>
+        <Button variant="contained" color="secondary" onClick={() => { setCreateError(''); setOpenCreate(true); }}>
           Nouvelle réservation
         </Button>
       </Stack>
@@ -127,6 +137,7 @@ export default function Reservations() {
         <DialogContent sx={{ p: 3 }}>
           <Typography variant="h6" sx={{ mb: 2 }}>Créer une réservation</Typography>
           <Stack spacing={2}>
+            {createError ? <Alert severity="error">{createError}</Alert> : null}
             <TextField select label="Client" value={form.client} onChange={(event) => setForm((prev) => ({ ...prev, client: event.target.value }))}>
               {(data?.clients || []).map((client) => (
                 <MenuItem key={client._id} value={client._id}>{fullName(client)} · {client.email}</MenuItem>
@@ -148,7 +159,14 @@ export default function Reservations() {
             <TextField label="Notes" multiline minRows={3} value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
             <Stack direction="row" justifyContent="flex-end" spacing={1.2}>
               <Button variant="outlined" onClick={() => setOpenCreate(false)}>Annuler</Button>
-              <Button variant="contained" color="secondary" onClick={handleCreate}>Créer</Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleCreate}
+                disabled={creating || !form.client || !form.room || !form.checkInDate || !form.checkOutDate || form.checkOutDate <= form.checkInDate}
+              >
+                {creating ? 'Création…' : 'Créer'}
+              </Button>
             </Stack>
           </Stack>
         </DialogContent>

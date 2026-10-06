@@ -5,6 +5,7 @@ const Order = require("../models/Order");
 const Invoice = require("../models/Invoice");
 const ConciergeRequest = require("../models/ConciergeRequest");
 const Notification = require("../models/Notification");
+const { parseStayDates } = require("../utils/reservationValidation");
 
 // Toutes ces routes sont protégées par protectClient: req.client est toujours défini
 // et chaque requête est strictement limitée aux données de ce client.
@@ -17,16 +18,15 @@ const getPortalRooms = asyncHandler(async (req, res) => {
   if (category) filter.category = category;
 
   if (checkInDate || checkOutDate) {
-    const from = new Date(checkInDate);
-    const to = new Date(checkOutDate);
-    if (isNaN(from) || isNaN(to) || to <= from) {
+    const dates = parseStayDates(checkInDate, checkOutDate);
+    if (!dates) {
       res.status(400);
       throw new Error("Dates invalides");
     }
     const busy = await Reservation.find({
       status: { $in: ["pending", "confirmed", "checked_in"] },
-      checkInDate: { $lt: to },
-      checkOutDate: { $gt: from },
+      checkInDate: { $lt: dates.checkOut },
+      checkOutDate: { $gt: dates.checkIn },
     }).distinct("room");
     filter._id = { $nin: busy };
   }

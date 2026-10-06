@@ -40,7 +40,7 @@ const initiatePayment = async ({ amount, currency, phone, reference, callbackUrl
 const verifyPayment = async (paymentId) => {
   if (!isConfigured()) throw new Error("Mobile Money n'est pas configuré");
   const response = await axios.get(
-    `${process.env.MOBILE_MONEY_API_URL}/payments/${paymentId}/status`,
+    `${process.env.MOBILE_MONEY_API_URL}/payments/${encodeURIComponent(paymentId)}/status`,
     { headers: { Authorization: `Bearer ${process.env.MOBILE_MONEY_API_KEY}` } }
   );
   return response.data; // Format typique: { status: "success"|"pending"|"failed", amount, ... }

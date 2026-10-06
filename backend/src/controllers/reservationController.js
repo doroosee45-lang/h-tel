@@ -1,4 +1,5 @@
 const asyncHandler = require("../middleware/asyncHandler");
+const Client = require("../models/Client");
 const Reservation = require("../models/Reservation");
 const Room = require("../models/Room");
 const Invoice = require("../models/Invoice");
@@ -7,6 +8,7 @@ const { generateQRCode } = require("../utils/qrGenerator");
 const { notify } = require("../utils/notify");
 const { issueKeyForReservation, revokeKeysForReservation } = require("../services/digitalKeyService");
 const { calculateStayPrice } = require("../utils/pricing");
+const { parseStayDates, parseManualDiscount } = require("../utils/reservationValidation");
 
 // @route GET /api/reservations
 const getReservations = asyncHandler(async (req, res) => {
@@ -54,13 +56,17 @@ const createReservation = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Client requis (connectez-vous ou précisez l'ID client)");
   }
-
-  const checkIn = new Date(checkInDate);
-  const checkOut = new Date(checkOutDate);
-  if (checkOut <= checkIn) {
-    res.status(400);
-    throw new Error("La date de départ doit être après la date d'arrivée");
+  if (!(await Client.exists({ _id: client }))) {
+    res.status(404);
+    throw new Error("Client non trouvé");
   }
+
+  const dates = parseStayDates(checkInDate, checkOutDate);
+  if (!dates) {
+    res.status(400);
+    throw new Error("Dates invalides: le départ doit être après l'arrivée");
+  }
+  const { checkIn, checkOut } = dates;
 
   // Vérifie le conflit de disponibilité
   const conflict = await Reservation.findOne({
@@ -79,11 +85,19 @@ const createReservation = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Chambre non trouvée");
   }
+  if (!room.isActive || room.status === "maintenance") {
+    res.status(400);
+    throw new Error("Cette chambre n'est pas réservable");
+  }
 
   // Calcul du prix réel: tarif saisonnier > tarif week-end > tarif de base, nuit par
   // nuit, puis application de la meilleure promotion active sur la catégorie.
   const priceCalc = calculateStayPrice(room.category, checkIn, checkOut);
-  const manualDiscount = discount || 0;
+  const manualDiscount = req.user ? parseManualDiscount(discount, priceCalc.subtotal, priceCalc.promotionDiscount) : 0;
+  if (manualDiscount === null) {
+    res.status(400);
+    throw new Error("Remise manuelle invalide");
+  }
   const totalDiscount = priceCalc.promotionDiscount + manualDiscount;
   const totalAmount = priceCalc.subtotal - totalDiscount;
 
@@ -105,7 +119,9 @@ const createReservation = asyncHandler(async (req, res) => {
     createdBy: req.user?._id,
   });
 
-  await Room.findByIdAndUpdate(roomId, { status: "reserved" });
+  if (room.status === "available") {
+    await Room.findByIdAndUpdate(roomId, { status: "reserved" });
+  }
 
   await notify(
     req,
@@ -124,7 +140,39 @@ const createReservation = asyncHandler(async (req, res) => {
 
 // @route PUT /api/reservations/:id
 const updateReservation = asyncHandler(async (req, res) => {
-  const reservation = await Reservation.findByIdAndUpdate(req.params.id, req.body, {
+  const allowedFields = ["notes", "adults", "children"];
+  const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+  const unexpectedFields = Object.keys(body).filter((field) => !allowedFields.includes(field));
+  if (unexpectedFields.length) {
+    res.status(400);
+    throw new Error(`Champs non modifiables: ${unexpectedFields.join(", ")}`);
+  }
+
+  const updates = {};
+  if (body.notes !== undefined) {
+    if (typeof body.notes !== "string" || body.notes.length > 2000) {
+      res.status(400);
+      throw new Error("Notes invalides");
+    }
+    updates.notes = body.notes;
+  }
+  for (const field of ["adults", "children"]) {
+    if (body[field] !== undefined) {
+      const value = Number(body[field]);
+      const minimum = field === "adults" ? 1 : 0;
+      if (!Number.isInteger(value) || value < minimum) {
+        res.status(400);
+        throw new Error(`${field} invalide`);
+      }
+      updates[field] = value;
+    }
+  }
+  if (!Object.keys(updates).length) {
+    res.status(400);
+    throw new Error("Aucun champ modifiable fourni");
+  }
+
+  const reservation = await Reservation.findByIdAndUpdate(req.params.id, updates, {
     new: true,
     runValidators: true,
   });
@@ -146,7 +194,15 @@ const cancelReservation = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Réservation non trouvée");
   }
-  await Room.findByIdAndUpdate(reservation.room, { status: "available" });
+  const room = await Room.findById(reservation.room);
+  if (room?.status === "reserved") {
+    const [checkedIn, confirmed] = await Promise.all([
+      Reservation.exists({ room: room._id, status: "checked_in" }),
+      Reservation.exists({ room: room._id, status: { $in: ["pending", "confirmed"] } }),
+    ]);
+    room.status = checkedIn ? "occupied" : confirmed ? "reserved" : "available";
+    await room.save();
+  }
   res.json({ success: true, data: reservation });
 });
 

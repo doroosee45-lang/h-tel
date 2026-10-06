@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api, { STORAGE_KEYS, setAuthFailureHandler } from '../api/client';
+import api, { STORAGE_KEYS, clearStoredSession, getStoredToken, saveTokens, setAuthFailureHandler } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -10,16 +10,13 @@ export function AuthProvider({ children }) {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const clearSession = useCallback(async () => {
-    await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS));
+    await clearStoredSession();
     setUser(null);
     setUnreadCount(0);
   }, []);
 
   const saveSession = async (data) => {
-    await AsyncStorage.multiSet([
-      [STORAGE_KEYS.access, data.accessToken],
-      [STORAGE_KEYS.refresh, data.refreshToken],
-    ]);
+    await saveTokens(data);
   };
 
   // Restauration de la session au démarrage
@@ -27,7 +24,7 @@ export function AuthProvider({ children }) {
     setAuthFailureHandler(clearSession);
     (async () => {
       try {
-        const token = await AsyncStorage.getItem(STORAGE_KEYS.access);
+        const token = await getStoredToken(STORAGE_KEYS.access);
         if (token) {
           const { data } = await api.get('/client-portal/me');
           setUser(data.data);

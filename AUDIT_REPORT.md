@@ -1,6 +1,6 @@
 # Rapport d’audit — Smart Hotel 360
 
-Date de l’audit : 6 octobre 2026  
+Date de l’audit : 6 octobre 2026
 Branche examinée : `copilot/copilotadd-mobile-app-client` (la branche locale diffère du nom donné dans la demande).
 
 ## Périmètre et méthode
